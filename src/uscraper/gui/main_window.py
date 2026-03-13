@@ -311,7 +311,13 @@ class MainWindow:
         self._after_id = self.root.after(200, self._poll_picker_queue)
 
     def _on_picker_selector(self, selector: str, inspection=None):
-        opts = ask_element_options(self.root, selector, inspection)
+        existing_columns = []
+        if self._current_profile_id is not None:
+            for el in list_profile_elements(self.conn, self._current_profile_id):
+                name = (el.get("column_name") or "").strip()
+                if name:
+                    existing_columns.append(name)
+        opts = ask_element_options(self.root, selector, inspection, existing_columns)
         if not opts:
             return
         col, ext, arg = opts

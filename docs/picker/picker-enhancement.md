@@ -175,6 +175,16 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Estimated effort**: Small–medium (1–2 days).
 
+**Progress (Phase 4b — Implemented)**:
+- **Dialog API**: `ask_element_options(parent, selector, inspection=None, existing_columns=None)`. Backward compatible when `inspection` is None.
+- **Column name**: Combobox (dropdown + free text). `_column_suggestions(inspection, existing_columns)` builds options: for `<a href>` → "link"; for `<img>` → "image_src" / "image_alt"; generic tag+attr → e.g. "span_class"; always "inner_text", "html"; plus existing profile column names. Default is first suggestion.
+- **Extract type**: Combo text / attribute / html. `_suggest_extract_and_attr(inspection)` suggests "attribute" + "href" for `<a>`, "attribute" + "src" for `<img>`. Attribute row is shown only when extract type is "attribute" (trace on type_var toggles visibility).
+- **Attribute dropdown**: When extract type is "attribute" and inspection has attributes, readonly combobox with display `attr_name → truncated(value)` (40 chars); stored value is attr name via `attr_combo.current()`. Pre-select href for `<a>`, src for `<img>`, else first. When no attributes, "No attributes" label + Entry for manual attr name.
+- **Element preview**: When inspection is present, "Element preview" section with tag, id/class if present, and inner text preview (read-only).
+- **Selector**: Full selector shown (truncated in label); "Copy" button copies selector to clipboard.
+- **Existing columns**: Main window passes `existing_columns` from `list_profile_elements(..., profile_id)` (column_name list) into the dialog; merged into column suggestions.
+- **Tests**: `tests/test_dialogs.py` — unit tests for `_column_suggestions` and `_suggest_extract_and_attr` (a/href, img/src/alt, generic tag+attr, no inspection, existing columns).
+
 ---
 
 ### Phase 4c: Picker–Dialog Wiring and Profile Column List
@@ -232,7 +242,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 | Phase | Focus | Key deliverable | Status |
 |-------|--------|------------------|--------|
 | **4a** | Element inspection in browser | JS inspector; payload (tag, attributes, text preview); picker returns inspection with selector | **Done** |
-| **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview | Pending |
+| **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview | **Done** |
 | **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling | Pending |
 | **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs | Pending |
 

@@ -1,2 +1,8 @@
 .venv
-*pyc
+__pycache__
+*.pyc
+*.egg-info
+build/
+dist/
+packaging/deb_dist/
+.pytest_cache

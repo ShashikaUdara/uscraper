@@ -7,18 +7,21 @@ BIN := $(VENV)/bin
 PIP := $(BIN)/pip
 PYTEST := $(BIN)/pytest
 
-.PHONY: help venv install install-dev test run clean install-browsers install-deps
+.PHONY: help venv install install-dev test run clean install-browsers install-deps install-deps-ubuntu dist-deb dist-standalone
 
 help:
 	@echo "uscraper Makefile targets:"
-	@echo "  venv            Create virtualenv at .venv"
-	@echo "  install         Install package (editable) and runtime deps"
-	@echo "  install-dev     Install with [dev] (pytest, etc.)"
-	@echo "  test            Run tests"
-	@echo "  run             Run uscraper (DB init only until GUI is ready)"
-	@echo "  install-browsers  Install Playwright browsers (chromium, firefox, webkit)"
-	@echo "  install-deps    Install system deps for Playwright (Ubuntu: playwright install-deps)"
-	@echo "  clean           Remove .venv, cache, and build artifacts"
+	@echo "  venv               Create virtualenv at .venv"
+	@echo "  install            Install package (editable) and runtime deps"
+	@echo "  install-dev        Install with [dev] (pytest, etc.)"
+	@echo "  test               Run tests"
+	@echo "  run                Run uscraper GUI"
+	@echo "  install-browsers   Install Playwright browsers (chromium, firefox, webkit)"
+	@echo "  install-deps       Install system deps for Playwright (run in venv)"
+	@echo "  install-deps-ubuntu  Print apt command for Ubuntu system packages (python3-tk, etc.)"
+	@echo "  dist-deb           Build .deb package (optional; requires stdeb)"
+	@echo "  dist-standalone    Build standalone executable (optional; requires pyinstaller)"
+	@echo "  clean              Remove .venv, cache, and build artifacts"
 
 venv:
 	$(PYTHON) -m venv $(VENV)
@@ -40,6 +43,20 @@ install-browsers: install
 
 install-deps: install
 	$(BIN)/python -m playwright install-deps
+
+install-deps-ubuntu:
+	@echo "Run (with sudo) to install Ubuntu system packages:"
+	@echo "  sudo apt install -y python3 python3-venv python3-tk"
+	@echo "Or: sudo scripts/install_deps_ubuntu.sh"
+
+dist-deb: install
+	@chmod +x packaging/build_deb.sh 2>/dev/null || true
+	./packaging/build_deb.sh
+
+dist-standalone: install
+	$(PIP) install -q pyinstaller
+	$(BIN)/pyinstaller packaging/uscraper.spec
+	@echo "Built: dist/uscraper"
 
 clean:
 	rm -rf $(VENV)

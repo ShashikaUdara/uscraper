@@ -16,7 +16,7 @@ This document describes the implementation plan for a **universal, customizable 
 | **Phase 3** | **Done** | Scraping engine implemented (see below). |
 | **Phase 4** | **Done** | Element selection mechanism (picker) implemented (see below). |
 | **Phase 5** | **Done** | Desktop GUI (Tkinter) implemented (see below). |
-| Phase 6 | Pending | Ubuntu packaging. |
+| **Phase 6** | **Done** | Ubuntu installability and packaging (see below). |
 | Phase 7 | Pending | Testing and polish. |
 
 ### Phase 1 — Completed
@@ -67,6 +67,16 @@ This document describes the implementation plan for a **universal, customizable 
 - **5.6 Run and progress:** “Run scrape” runs `run_scrape(profile_id)` in a thread; status shows “Running scrape…”; on completion, success (path + row count) or error in messagebox and status bar.
 - **5.7 Settings:** File → Settings opens directory chooser for default CSV output dir; stored in `app_config.output_dir`.
 - **Deliverables:** Usable GUI on Ubuntu for URL → profile → browser → pick elements → run → CSV. Entry point: `uscraper` in `__main__.py` launches `run_gui()`; clear error if Tkinter is missing.
+
+### Phase 6 — Completed
+
+- **6.1 System dependencies:** Documented in `docs/INSTALL.md` and README: Python 3.10+, `python3-tk` (Tkinter), `python3-venv`; Playwright system libs via `make install-deps` (runs `playwright install-deps`). No Qt (GUI is Tkinter).
+- **6.2 pip install:** `pyproject.toml` with console script `uscraper`; `make install` / `pip install -e .`; `requirements.txt` added for optional use.
+- **6.3 Optional .deb:** `packaging/build_deb.sh` builds sdist then uses `stdeb` (`py2dsc`) to produce a .deb; `make dist-deb`; `packaging/README.md` describes the process.
+- **6.4 Optional standalone:** `packaging/uscraper.spec` for PyInstaller; `make dist-standalone` builds a single executable (GUI, no console).
+- **6.5 First-run:** On first launch, GUI calls `ensure_db()` which creates `~/.config/uscraper/` and initializes DB and seeds browsers; documented in `docs/INSTALL.md` (no automatic browser install; user installs from app or `make install-browsers`).
+- **6.6 README:** README and `docs/INSTALL.md` provide full Ubuntu install steps (apt, venv, make install, make install-deps, make install-browsers, make run); `scripts/install_deps_ubuntu.sh` for apt-only system packages; Makefile targets `install-deps-ubuntu`, `dist-deb`, `dist-standalone` and updated `help`.
+- **Deliverables:** Clear install steps; pip + venv + make as primary method; optional .deb and standalone build documented and scripted.
 
 ---
 
@@ -427,4 +437,4 @@ uscraper/
 
 ---
 
-*Document version: 1.5 — Phase 1–5 implemented; progress tracked in §0.*
+*Document version: 1.6 — Phase 1–6 implemented; progress tracked in §0.*

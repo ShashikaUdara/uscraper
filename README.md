@@ -2,18 +2,25 @@
 
 Universal web scraper — desktop tool for Linux (Ubuntu).
 
+## Install on Ubuntu
+
+**Requirements:** Python 3.10+, Tkinter (`python3-tk`), Playwright system libs.
+
+```bash
+sudo apt install -y python3 python3-venv python3-tk
+make venv && make install
+make install-deps          # Playwright system dependencies
+make install-browsers      # Optional: download Chromium/Firefox/WebKit
+make run
+```
+
+Full details and troubleshooting: **[docs/INSTALL.md](docs/INSTALL.md)**.
+
 ## Run (with GUI)
 
 ```bash
-# Install (creates venv, installs package + deps)
-make install-dev
-
-# On Ubuntu: Tkinter is required for the GUI
-sudo apt install python3-tk
-
-# Run the application
 make run
-# or: uscraper
+# or: .venv/bin/uscraper
 ```
 
 ## Flow

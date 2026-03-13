@@ -6,6 +6,31 @@ This document describes the implementation plan for a **universal, customizable 
 
 ---
 
+## 0. Implementation Progress
+
+| Phase | Status | Notes |
+|-------|--------|--------|
+| **Phase 0** | Pending | Project layout partially done (see Phase 1); full bootstrap in progress. |
+| **Phase 1** | **Done** | Database and configuration layer implemented (see below). |
+| Phase 2 | Pending | Browser/driver auto-install. |
+| Phase 3 | Pending | Scraping engine. |
+| Phase 4 | Pending | Element picker. |
+| Phase 5 | Pending | Desktop GUI. |
+| Phase 6 | Pending | Ubuntu packaging. |
+| Phase 7 | Pending | Testing and polish. |
+
+### Phase 1 — Completed
+
+- **1.1 Schema:** `src/uscraper/db/schema.sql` — all tables and indexes (CREATE IF NOT EXISTS).
+- **1.2 DB connection:** `src/uscraper/db/connection.py` — `get_connection()`, `init_schema()`, `ensure_db()`; config path via `src/uscraper/config.py` (`~/.config/uscraper/`); WAL mode and foreign keys enabled.
+- **1.3 App config API:** `src/uscraper/db/app_config.py` — `get_config()`, `set_config()`, `get_config_default()`.
+- **1.4 Browsers and drivers API:** `src/uscraper/db/browsers.py` — CRUD for browsers/drivers; `seed_browsers_if_empty()` seeds Chromium, Firefox, WebKit (Playwright) with `install_status = 'pending'`; `ensure_db()` calls seed after schema.
+- **1.5 Scrape profiles API:** `src/uscraper/db/profiles.py` — full CRUD for `scrape_profiles` and `scrape_elements`; `get_profile_with_elements()` for engine use.
+- **1.6 Scrape runs API:** `src/uscraper/db/runs.py` — `start_run()`, `complete_run()`, `fail_run()`, `get_run()`, `list_runs_for_profile()`.
+- **Deliverables:** DB layer has no GUI dependency. **Unit tests:** `tests/test_db.py` (22 tests) — schema creation, ensure_db + seed, app_config, browsers/drivers, profiles/elements, runs; all passing. Package: `pyproject.toml` with `src` layout; entry point `uscraper` in `src/uscraper/__main__.py` (stub that initializes DB).
+
+---
+
 ## 1. Technology Choices
 
 | Concern | Choice | Rationale |
@@ -363,4 +388,4 @@ uscraper/
 
 ---
 
-*Document version: 1.0 — for review before implementation.*
+*Document version: 1.1 — Phase 1 implemented; progress tracked in §0.*

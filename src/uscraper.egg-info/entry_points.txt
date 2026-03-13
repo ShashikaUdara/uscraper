@@ -1,0 +1,2 @@
+[console_scripts]
+uscraper = uscraper.__main__:main

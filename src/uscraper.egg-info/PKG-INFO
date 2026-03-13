@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: uscraper
+Version: 0.1.0
+Summary: Universal web scraper — desktop tool
+Author: uscraper
+License: MIT
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: X11 Applications
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+
+# uscraper
+Universal web scraper - desctop tool

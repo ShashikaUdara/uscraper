@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 src/uscraper/__init__.py
 src/uscraper/__main__.py
+src/uscraper/browser_install.py
 src/uscraper/config.py
 src/uscraper.egg-info/PKG-INFO
 src/uscraper.egg-info/SOURCES.txt

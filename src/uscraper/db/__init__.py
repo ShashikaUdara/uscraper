@@ -10,6 +10,7 @@ from uscraper.db.browsers import (
     get_browser_by_internal_name,
     update_driver,
     set_driver_last_used,
+    ensure_browser_installed,
 )
 from uscraper.db.profiles import (
     create_profile,
@@ -44,6 +45,7 @@ __all__ = [
     "get_browser_by_internal_name",
     "update_driver",
     "set_driver_last_used",
+    "ensure_browser_installed",
     "create_profile",
     "get_profile",
     "list_profiles",

@@ -12,7 +12,7 @@ This document describes the implementation plan for a **universal, customizable 
 |-------|--------|--------|
 | **Phase 0** | Pending | Project layout partially done (see Phase 1); full bootstrap in progress. |
 | **Phase 1** | **Done** | Database and configuration layer implemented (see below). |
-| Phase 2 | Pending | Browser/driver auto-install. |
+| **Phase 2** | **Done** | Browser/driver auto-install implemented (see below). |
 | Phase 3 | Pending | Scraping engine. |
 | Phase 4 | Pending | Element picker. |
 | Phase 5 | Pending | Desktop GUI. |
@@ -28,6 +28,15 @@ This document describes the implementation plan for a **universal, customizable 
 - **1.5 Scrape profiles API:** `src/uscraper/db/profiles.py` — full CRUD for `scrape_profiles` and `scrape_elements`; `get_profile_with_elements()` for engine use.
 - **1.6 Scrape runs API:** `src/uscraper/db/runs.py` — `start_run()`, `complete_run()`, `fail_run()`, `get_run()`, `list_runs_for_profile()`.
 - **Deliverables:** DB layer has no GUI dependency. **Unit tests:** `tests/test_db.py` (22 tests) — schema creation, ensure_db + seed, app_config, browsers/drivers, profiles/elements, runs; all passing. Package: `pyproject.toml` with `src` layout; entry point `uscraper` in `src/uscraper/__main__.py` (stub that initializes DB).
+
+### Phase 2 — Completed
+
+- **2.1 Browser list in DB:** Already seeded in Phase 1 (chromium, firefox, webkit, driver_type='playwright').
+- **2.2 Install flow:** `ensure_browser_installed(conn, browser_id)` in `src/uscraper/db/browsers.py` — if `install_status != 'installed'`, calls Playwright install via `src/uscraper/browser_install.py` (`install_playwright_browser(internal_name)` runs `python -m playwright install <browser>`); on success updates `drivers` with `install_status='installed'` and `executable_path='playwright:<name>'`.
+- **2.3 Driver path:** Executable path stored as marker `playwright:<internal_name>` for engine to use Playwright API; optional `get_playwright_cache_path()` for display.
+- **2.4 Error handling:** On install failure, `install_status='failed'` and `install_error_message` set; `ensure_browser_installed` returns `(False, error_message)`. Schema: `drivers.install_error_message` added (with migration in `connection._migrate_drivers_table` for existing DBs).
+- **2.5 Selenium:** Deferred (optional).
+- **Deliverables:** Selecting a browser triggers install when needed; driver info persisted in SQLite. **Tests:** 4 new tests in `test_db.py` (already installed, success/failure mocked, unknown browser). **Makefile:** `make help`, `venv`, `install`, `install-dev`, `test`, `run`, `install-browsers`, `install-deps`, `clean`.
 
 ---
 
@@ -388,4 +397,4 @@ uscraper/
 
 ---
 
-*Document version: 1.1 — Phase 1 implemented; progress tracked in §0.*
+*Document version: 1.2 — Phase 1 and Phase 2 implemented; progress tracked in §0.*

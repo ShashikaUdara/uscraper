@@ -1,5 +1,7 @@
 """Unit tests for DB layer: schema, app_config, browsers, drivers, profiles, runs."""
 import sqlite3
+from unittest.mock import patch
+
 import pytest
 
 from uscraper.db import (
@@ -15,6 +17,7 @@ from uscraper.db import (
     get_browser_by_internal_name,
     update_driver,
     set_driver_last_used,
+    ensure_browser_installed,
     create_profile,
     get_profile,
     list_profiles,
@@ -130,6 +133,41 @@ def test_set_driver_last_used(conn):
     set_driver_last_used(conn, 1)
     row = conn.execute("SELECT last_used_at FROM drivers WHERE browser_id = 1").fetchone()
     assert row[0] is not None
+
+
+def test_ensure_browser_installed_already_installed(conn):
+    update_driver(conn, 1, install_status="installed", executable_path="playwright:chromium")
+    ok, err = ensure_browser_installed(conn, 1)
+    assert ok is True
+    assert err == ""
+
+
+def test_ensure_browser_installed_success(conn):
+    with patch("uscraper.browser_install.install_playwright_browser") as mock_install:
+        mock_install.return_value = (True, "playwright:chromium", None)
+        ok, err = ensure_browser_installed(conn, 1)
+    assert ok is True
+    assert err == ""
+    b = get_browser_by_id(conn, 1)
+    assert b["install_status"] == "installed"
+    assert b["executable_path"] == "playwright:chromium"
+
+
+def test_ensure_browser_installed_failure(conn):
+    with patch("uscraper.browser_install.install_playwright_browser") as mock_install:
+        mock_install.return_value = (False, None, "Network error")
+        ok, err = ensure_browser_installed(conn, 1)
+    assert ok is False
+    assert "Network error" in err
+    b = get_browser_by_id(conn, 1)
+    assert b["install_status"] == "failed"
+    assert b.get("install_error_message") == "Network error"
+
+
+def test_ensure_browser_installed_unknown_browser(conn):
+    ok, err = ensure_browser_installed(conn, 999)
+    assert ok is False
+    assert "not found" in err.lower()
 
 
 # --- Profiles and elements ---

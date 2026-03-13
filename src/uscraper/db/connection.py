@@ -24,6 +24,15 @@ def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_drivers_table(conn: sqlite3.Connection) -> None:
+    """Add install_error_message to drivers if missing (existing DBs)."""
+    cur = conn.execute("PRAGMA table_info(drivers)")
+    columns = [row[1] for row in cur.fetchall()]
+    if "install_error_message" not in columns:
+        conn.execute("ALTER TABLE drivers ADD COLUMN install_error_message TEXT")
+        conn.commit()
+
+
 def init_schema(conn: sqlite3.Connection) -> None:
     """
     Apply schema.sql to the given connection.
@@ -33,6 +42,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     schema_sql = schema_path.read_text()
     conn.executescript(schema_sql)
     conn.commit()
+    _migrate_drivers_table(conn)
 
 
 def ensure_db(db_path: Optional[Path] = None) -> sqlite3.Connection:

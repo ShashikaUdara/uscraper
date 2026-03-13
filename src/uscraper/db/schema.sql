@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS drivers (
   version TEXT,
   executable_path TEXT,
   install_status TEXT NOT NULL DEFAULT 'pending',
+  install_error_message TEXT,
   last_used_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(browser_id)

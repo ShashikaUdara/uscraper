@@ -267,15 +267,20 @@ class MainWindow:
         session = self._picker_session
         if session is None:
             return
-        if session.is_page_closed():
-            self._picker_cleanup()
-            return
-        sel = session.get_next_selector(timeout=0)
-        if sel is PICKER_CLOSED:
-            self._picker_cleanup()
-            return
-        if sel is not None:
-            self._on_picker_selector(sel)
+        try:
+            if session.is_page_closed():
+                self._picker_cleanup()
+                return
+            sel = session.get_next_selector(timeout=0)
+            if sel is PICKER_CLOSED:
+                self._picker_cleanup()
+                return
+            if sel is not None:
+                self._on_picker_selector(sel)
+        except Exception:
+            # Keep polling so further selections work; do not leave button stuck disabled
+            pass
+        # Always schedule next poll unless we returned above (cleanup)
         self._picker_after_id = self.root.after(150, self._picker_poll)
 
     def _picker_cleanup(self):

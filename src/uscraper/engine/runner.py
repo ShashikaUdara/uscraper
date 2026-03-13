@@ -174,7 +174,7 @@ def run_scrape(
             log.info("Starting scrape profile_id=%s run_id=%s", profile_id, run_id)
             with launch_browser_from_driver(browser.get("executable_path"), options) as page:
                 page.goto(profile["url"], wait_until="domcontentloaded", timeout=options.get("timeout", 30000))
-                page.wait_for_load_state("networkidle", timeout=options.get("timeout", 10000))
+                # Rely on domcontentloaded from goto; "networkidle" often never fires on real sites (analytics, ads, etc.)
 
                 rows, column_order = _extract_all_elements(page, elements)
                 write_rows_to_csv(csv_path, rows, column_order)

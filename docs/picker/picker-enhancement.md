@@ -128,6 +128,13 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Estimated effort**: Small (1–2 days).
 
+**Progress (Phase 4a — Implemented)**:
+- **Payload contract**: `ElementInspection` dataclass in `src/uscraper/engine/inspect.py` with `tag_name`, `attributes` (list of `{name, value}`), `inner_text_preview`, `html_preview`, `selector`. `from_browser_dict()` normalizes the browser object and truncates previews (80 / 200 chars).
+- **JS inspector**: `get_element_inspection_js()` defines `window.__getInspection(el)`; returns `{ selector, tagName, attributes, innerTextPreview, htmlPreview }`. Injected after the selector script in the picker.
+- **Picker integration**: Click handler builds the full payload in the page via `__getInspection(el)` and sends it to `__pickerCallback(payload)`. Callback accepts either a dict (inspection) or a string (selector only); queue stores `(selector, inspection)`. `get_next_selector()` now returns `(selector, inspection)` or `PICKER_CLOSED` or `None`.
+- **GUI**: Main window unpacks `(selector, inspection)` and calls `ask_element_options(parent, selector, inspection)`. Dialog API accepts `inspection=None` (used in Phase 4b for dropdowns).
+- **Tests**: `tests/test_inspect.py` (payload parsing, truncation, invalid input); `tests/test_picker.py` (callback with dict returns tuple, plain string returns selector + None; integration test runs inspection JS in browser and checks payload shape).
+
 ---
 
 ### Phase 4b: Element Options Dialog – Pre-fill and Attribute Dropdown
@@ -222,12 +229,12 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 ## 5. Summary Table
 
-| Phase | Focus | Key deliverable |
-|-------|--------|------------------|
-| **4a** | Element inspection in browser | JS inspector; payload (tag, attributes, text preview); picker returns inspection with selector |
-| **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview |
-| **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling |
-| **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs |
+| Phase | Focus | Key deliverable | Status |
+|-------|--------|------------------|--------|
+| **4a** | Element inspection in browser | JS inspector; payload (tag, attributes, text preview); picker returns inspection with selector | **Done** |
+| **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview | Pending |
+| **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling | Pending |
+| **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs | Pending |
 
 ---
 

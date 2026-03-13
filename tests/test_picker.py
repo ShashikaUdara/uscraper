@@ -1,4 +1,4 @@
-"""Tests for element picker: selector generation, session add_to_profile, list/remove/reorder."""
+"""Tests for element picker: selector generation, session add_to_profile, list/remove/reorder, inspection."""
 import tempfile
 from pathlib import Path
 
@@ -6,6 +6,7 @@ import pytest
 
 from uscraper.engine import (
     ElementPickerSession,
+    PICKER_CLOSED,
     list_profile_elements,
     remove_profile_element,
     reorder_profile_elements,
@@ -77,6 +78,39 @@ def test_picker_add_to_profile_without_browser(temp_db):
     assert els[0]["extract_type"] == "text"
 
 
+def test_picker_callback_with_inspection_payload_returns_tuple():
+    """When the browser sends a full inspection dict, get_next_selector returns (selector, inspection)."""
+    session = ElementPickerSession("https://example.com", "playwright:chromium")
+    payload = {
+        "selector": "a#main.nav",
+        "tagName": "a",
+        "attributes": [{"name": "href", "value": "https://example.com"}],
+        "innerTextPreview": "Home",
+        "htmlPreview": "<a id=\"main\">Home</a>",
+    }
+    session._on_element_clicked(payload)
+    result = session.get_next_selector(timeout=0.1)
+    assert result is not None and result is not PICKER_CLOSED
+    selector, inspection = result
+    assert selector == "a#main.nav"
+    assert inspection is not None
+    assert inspection.tag_name == "a"
+    assert len(inspection.attributes) == 1
+    assert inspection.attributes[0]["name"] == "href"
+    assert inspection.inner_text_preview == "Home"
+
+
+def test_picker_callback_with_plain_string_returns_selector_and_none_inspection():
+    """Backward compat: when callback receives only a selector string, inspection is None."""
+    session = ElementPickerSession("https://example.com", "playwright:chromium")
+    session._on_element_clicked("div > span:nth-child(1)")
+    result = session.get_next_selector(timeout=0.1)
+    assert result is not None and result is not PICKER_CLOSED
+    selector, inspection = result
+    assert selector == "div > span:nth-child(1)"
+    assert inspection is None
+
+
 def test_selector_generates_valid_selector_in_browser(temp_db):
     """Integration: load fixture HTML, inject getSelector, verify selector matches element."""
     pytest.importorskip("playwright")
@@ -111,5 +145,46 @@ def test_selector_generates_valid_selector_in_browser(temp_db):
                 catch (e) { return false; }
             }""", selector)
             assert match is True
+        finally:
+            browser.close()
+
+
+def test_inspection_js_returns_payload_in_browser():
+    """Integration: load fixture, inject getInspection, verify payload shape."""
+    pytest.importorskip("playwright")
+    from playwright.sync_api import sync_playwright
+
+    fixture_path = Path(__file__).parent / "fixtures" / "sample.html"
+    if not fixture_path.exists():
+        pytest.skip("fixture sample.html not found")
+    url = "file://" + str(fixture_path.resolve())
+
+    from uscraper.engine.selector import get_selector_for_element_js
+    from uscraper.engine.inspect import get_element_inspection_js, ElementInspection
+
+    with sync_playwright() as pw:
+        try:
+            browser = pw.chromium.launch(headless=True)
+        except Exception:
+            pytest.skip("Chromium not installed")
+        try:
+            page = browser.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=5000)
+            page.evaluate(get_selector_for_element_js())
+            page.evaluate(get_element_inspection_js())
+            payload = page.evaluate("""() => {
+                var el = document.querySelector('h1');
+                return el && window.__getInspection ? window.__getInspection(el) : null;
+            }""")
+            assert payload is not None
+            assert "selector" in payload
+            assert "tagName" in payload
+            assert payload.get("tagName") == "h1"
+            assert "attributes" in payload
+            assert "innerTextPreview" in payload
+            insp = ElementInspection.from_browser_dict(payload)
+            assert insp is not None
+            assert insp.tag_name == "h1"
+            assert insp.selector == payload["selector"]
         finally:
             browser.close()

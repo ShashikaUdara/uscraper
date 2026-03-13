@@ -2,6 +2,7 @@
 
 from uscraper.engine.runner import run_scrape
 from uscraper.engine.csv_export import write_rows_to_csv
+from uscraper.engine.inspect import ElementInspection
 from uscraper.engine.picker import (
     ElementPickerSession,
     PICKER_CLOSED,
@@ -14,6 +15,7 @@ from uscraper.engine.selector import get_selector_for_element_js
 __all__ = [
     "run_scrape",
     "write_rows_to_csv",
+    "ElementInspection",
     "ElementPickerSession",
     "PICKER_CLOSED",
     "list_profile_elements",

@@ -1,14 +1,15 @@
 """
 Element picker: open a URL in a browser, inject click-to-select behavior,
-and return a stable CSS selector for each element the user clicks.
+and return a stable CSS selector and optional element inspection for each click.
 Persist selections to a scrape profile via DB (add_element).
 Must be used from a single thread (Playwright sync API is not thread-safe).
 """
 import queue
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlite3
 
+from uscraper.engine.inspect import ElementInspection, get_element_inspection_js
 from uscraper.engine.playwright_driver import launch_browser_from_driver
 from uscraper.engine.selector import get_selector_for_element_js
 
@@ -43,10 +44,18 @@ class ElementPickerSession:
         self._closed = False
         self._browser_cm = None
 
-    def _on_element_clicked(self, selector: str) -> None:
+    def _on_element_clicked(self, payload: Union[str, dict]) -> None:
         if self._closed:
             return
-        self._queue.put(selector)
+        if isinstance(payload, str):
+            self._queue.put((payload, None))
+            return
+        if isinstance(payload, dict):
+            inspection = ElementInspection.from_browser_dict(payload)
+            selector = inspection.selector if inspection else (payload.get("selector") or "")
+            self._queue.put((selector, inspection))
+            return
+        self._queue.put(("", None))
 
     def __enter__(self) -> "ElementPickerSession":
         self._browser_cm = launch_browser_from_driver(
@@ -56,10 +65,11 @@ class ElementPickerSession:
         self._page.goto(self._url, wait_until="domcontentloaded", timeout=30000)
         self._page.add_init_script(get_selector_for_element_js())
         self._page.evaluate(get_selector_for_element_js())
+        self._page.evaluate(get_element_inspection_js())
 
         self._page.expose_function(
             "__pickerCallback",
-            lambda s: self._on_element_clicked(s) if isinstance(s, str) else None,
+            lambda p: self._on_element_clicked(p) if p is not None else None,
         )
 
         inject_click_js = """
@@ -69,11 +79,16 @@ class ElementPickerSession:
           document.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            if (typeof window.__getSelector === 'function' && typeof window.__pickerCallback === 'function') {
-              try {
-                window.__pickerCallback(window.__getSelector(e.target));
-              } catch (err) {}
-            }
+            if (typeof window.__pickerCallback !== 'function') return;
+            try {
+              var el = e.target;
+              if (typeof window.__getInspection === 'function') {
+                var payload = window.__getInspection(el);
+                window.__pickerCallback(payload || { selector: window.__getSelector ? window.__getSelector(el) : '' });
+              } else if (typeof window.__getSelector === 'function') {
+                window.__pickerCallback({ selector: window.__getSelector(el) });
+              }
+            } catch (err) {}
           }, true);
         })();
         """
@@ -93,10 +108,13 @@ class ElementPickerSession:
         """Playwright Page for the picker browser (e.g. for GUI to embed or drive)."""
         return self._page
 
-    def get_next_selector(self, timeout: Optional[float] = None):
+    def get_next_selector(
+        self, timeout: Optional[float] = None
+    ) -> Union[Tuple[str, Optional[ElementInspection]], None]:
         """
         Block until the user clicks an element, or timeout, or session is closed.
-        Returns the CSS selector (str) when the user clicked an element.
+        Returns (selector, inspection) when the user clicked an element.
+        inspection may be None if inspection failed or is unavailable.
         Returns None if timeout expires (no click yet — keep polling).
         Returns PICKER_CLOSED when the session was closed (exit the loop).
         """
@@ -106,7 +124,7 @@ class ElementPickerSession:
             result = self._queue.get(timeout=timeout)
             if result is _PICKER_CLOSED:
                 return PICKER_CLOSED
-            return result
+            return result  # (selector, inspection)
         except queue.Empty:
             return None
 

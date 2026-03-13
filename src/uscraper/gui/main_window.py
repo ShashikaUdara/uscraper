@@ -271,12 +271,13 @@ class MainWindow:
             if session.is_page_closed():
                 self._picker_cleanup()
                 return
-            sel = session.get_next_selector(timeout=0)
-            if sel is PICKER_CLOSED:
+            result = session.get_next_selector(timeout=0)
+            if result is PICKER_CLOSED:
                 self._picker_cleanup()
                 return
-            if sel is not None:
-                self._on_picker_selector(sel)
+            if result is not None:
+                selector, inspection = result
+                self._on_picker_selector(selector, inspection)
         except Exception:
             # Keep polling so further selections work; do not leave button stuck disabled
             pass
@@ -309,8 +310,8 @@ class MainWindow:
             pass
         self._after_id = self.root.after(200, self._poll_picker_queue)
 
-    def _on_picker_selector(self, selector: str):
-        opts = ask_element_options(self.root, selector)
+    def _on_picker_selector(self, selector: str, inspection=None):
+        opts = ask_element_options(self.root, selector, inspection)
         if not opts:
             return
         col, ext, arg = opts

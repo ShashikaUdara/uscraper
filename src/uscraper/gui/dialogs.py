@@ -59,8 +59,9 @@ def ask_profile(parent, browsers: List[dict]) -> Optional[Tuple[str, str, int]]:
     return result[0]
 
 
-def ask_element_options(parent, selector: str) -> Optional[Tuple[str, str, Optional[str]]]:
-    """Return (column_name, extract_type, extract_arg) or None. extract_arg used when type is 'attribute'."""
+def ask_element_options(parent, selector: str, inspection=None) -> Optional[Tuple[str, str, Optional[str]]]:
+    """Return (column_name, extract_type, extract_arg) or None. extract_arg used when type is 'attribute'.
+    inspection: optional ElementInspection from picker (Phase 4a); used in Phase 4b for dropdowns."""
     result = [None]
 
     d = tk.Toplevel(parent)

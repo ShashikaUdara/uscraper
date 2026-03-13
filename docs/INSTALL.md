@@ -51,6 +51,22 @@ On first launch, uscraper will:
 
 No browser is installed automatically; install at least one from the app or run `make install-browsers`.
 
+## Using the Picker
+
+To choose which parts of a page to scrape:
+
+1. Create or select a **profile**, enter the **URL**, and select a **browser** (install it if needed).
+2. Click **Select elements**. A browser window opens at the URL.
+3. **Click an element** on the page that you want to scrape. A dialog opens with:
+   - **Element preview**: tag name, id/class, and a short text preview so you can confirm the right element.
+   - **Selector**: the CSS selector (with a **Copy** button).
+   - **Column name**: suggestions from the element (e.g. "link" for links, "image_src" for images) and existing profile columns; you can type a custom name.
+   - **Extract**: "text", "attribute", or "html". For "attribute", choose the attribute from a dropdown showing `name → value`; use **View full** to see long values.
+4. Click **OK** to add the element to the profile, or **Cancel** to skip. Close the browser when you are done picking elements.
+5. Use **Run scrape** to run the profile and export data to CSV.
+
+In the element-options dialog, **Enter** confirms and **Escape** cancels.
+
 ## Troubleshooting
 
 | Issue | Solution |

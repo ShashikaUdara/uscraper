@@ -242,6 +242,12 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Estimated effort**: Small (0.5–1 day).
 
+**Progress (Phase 4d — Implemented)**:
+- **Long attribute values**: Attribute dropdown already truncates values to 40 chars (ATTR_DISPLAY_VALUE_LEN). Added a **View full** button next to the attribute dropdown; when clicked, shows the full value of the currently selected attribute in a messagebox (capped at 2000 chars for very long values).
+- **Duplicate column name warning**: Implemented in Phase 4c; no change in 4d.
+- **Keyboard and focus**: In the element-options dialog, **Enter** confirms (binds to OK) and **Escape** cancels. Initial focus is set to the column-name combobox via `d.after(10, col_combo.focus_set)` so the user can type or pick immediately.
+- **Documentation**: Added a **Using the Picker** section to `docs/INSTALL.md` describing: profile/URL/browser, opening the picker, clicking an element, the dialog (element preview, selector with Copy, column name suggestions, Extract type, attribute dropdown with View full), OK/Cancel, and that Enter confirms and Escape cancels. This document updated with Phase 4d progress.
+
 ---
 
 ## 5. Summary Table
@@ -251,7 +257,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 | **4a** | Element inspection in browser | JS inspector; payload (tag, attributes, text preview); picker returns inspection with selector | **Done** |
 | **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview | **Done** |
 | **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling | **Done** |
-| **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs | Pending |
+| **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs | **Done** |
 
 ---
 

@@ -199,7 +199,9 @@ def ask_element_options(
             attr_display_values.append(f"{a['name']} → {v}")
     attr_frame = ttk.Frame(d)
     attr_frame.grid(row=row, column=1, sticky="w", padx=5, pady=5)
+    full_attr_values: List[str] = []
     if attr_display_values:
+        full_attr_values = [(a["value"] or "") for a in (inspection.attributes or [])]
         attr_combo = ttk.Combobox(attr_frame, values=attr_display_values, state="readonly", width=36)
         attr_combo.pack(side="left")
         attr_combo_ref[0] = attr_combo
@@ -207,6 +209,17 @@ def ask_element_options(
         if attr_default and attr_default in attr_names:
             idx = attr_names.index(attr_default)
         attr_combo.current(idx)
+        def view_full_attr():
+            combo = attr_combo_ref[0]
+            if combo is not None and full_attr_values:
+                try:
+                    i = combo.current()
+                    if 0 <= i < len(full_attr_values):
+                        msg = full_attr_values[i] or "(empty)"
+                        messagebox.showinfo("Attribute value", msg[:2000] + ("..." if len(msg) > 2000 else ""), parent=d)
+                except Exception:
+                    pass
+        ttk.Button(attr_frame, text="View full", command=view_full_attr, width=8).pack(side="left", padx=(6, 0))
     else:
         ttk.Label(attr_frame, text="No attributes").pack(side="left")
         ttk.Entry(attr_frame, textvariable=attr_var, width=20).pack(side="left", padx=(8, 0))
@@ -264,6 +277,11 @@ def ask_element_options(
     btn_frame.grid(row=row, column=0, columnspan=2, pady=15)
     ttk.Button(btn_frame, text="OK", command=ok).pack(side="left", padx=5)
     ttk.Button(btn_frame, text="Cancel", command=cancel).pack(side="left", padx=5)
+
+    # Keyboard: Enter confirms, Escape cancels (Phase 4d)
+    d.bind("<Return>", lambda e: ok())
+    d.bind("<Escape>", lambda e: cancel())
+    d.after(10, col_combo.focus_set)
 
     d.wait_window()
     return result[0]

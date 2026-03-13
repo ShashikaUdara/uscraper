@@ -47,8 +47,8 @@ class MainWindow:
         self._after_id: Optional[str] = None
 
         self._build_ui()
+        self._refresh_browsers()  # Before _refresh_profiles so _on_profile_selected can use _browsers
         self._refresh_profiles()
-        self._refresh_browsers()
         self._poll_picker_queue()
 
     def _build_ui(self):
@@ -200,12 +200,18 @@ class MainWindow:
             messagebox.showinfo("No browser", "Select a browser.", parent=self.root)
             return
         b = self._browsers[idx]
+        browser_id = b["id"]
         self.status_var.set("Installing browser…")
         self.install_btn.config(state="disabled")
 
         def work():
-            ok, err = ensure_browser_installed(self.conn, b["id"])
-            self.root.after(0, lambda: self._on_install_done(ok, err))
+            # Use a connection created in this thread; SQLite connections are not thread-safe.
+            conn = ensure_db()
+            try:
+                ok, err = ensure_browser_installed(conn, browser_id)
+                self.root.after(0, lambda: self._on_install_done(ok, err))
+            finally:
+                conn.close()
 
         threading.Thread(target=work, daemon=True).start()
 

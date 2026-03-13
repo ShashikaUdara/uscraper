@@ -215,6 +215,14 @@ def test_add_element_and_get_elements(conn):
     assert "link" in titles
 
 
+def test_add_element_duplicate_column_name_raises(conn):
+    """Duplicate (profile_id, column_name) raises IntegrityError (Phase 4c: GUI catches this)."""
+    pid = create_profile(conn, "Dup", "https://d.com", browser_id=1)
+    add_element(conn, profile_id=pid, selector="h1", column_name="col", extract_type="text")
+    with pytest.raises(sqlite3.IntegrityError):
+        add_element(conn, profile_id=pid, selector="h2", column_name="col", extract_type="text")
+
+
 def test_update_element(conn):
     pid = create_profile(conn, "U", "https://u.com", browser_id=1)
     eid = add_element(conn, profile_id=pid, selector="h1", column_name="title", extract_type="text")

@@ -28,6 +28,8 @@ src/uscraper/gui/__init__.py
 src/uscraper/gui/dialogs.py
 src/uscraper/gui/main_window.py
 tests/test_db.py
+tests/test_dialogs.py
 tests/test_engine.py
+tests/test_inspect.py
 tests/test_logging.py
 tests/test_picker.py

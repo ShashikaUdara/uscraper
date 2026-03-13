@@ -3,6 +3,7 @@ Main application window: profile, URL, browser, element picker, run scrape.
 Uses Tkinter; long-running work (install, picker, scrape) runs in threads.
 """
 import queue
+import sqlite3
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -323,12 +324,19 @@ class MainWindow:
         col, ext, arg = opts
         session = self._picker_session
         if session and self._current_profile_id:
-            session.add_to_profile(
-                self.conn, self._current_profile_id, selector, col,
-                extract_type=ext, extract_arg=arg,
-            )
-            self._refresh_elements_list()
-            self.status_var.set(f"Added element «{col}».")
+            try:
+                session.add_to_profile(
+                    self.conn, self._current_profile_id, selector, col,
+                    extract_type=ext, extract_arg=arg,
+                )
+                self._refresh_elements_list()
+                self.status_var.set(f"Added element «{col}».")
+            except sqlite3.IntegrityError:
+                messagebox.showerror(
+                    "Duplicate column",
+                    "This column name already exists in the profile. Choose a different name.",
+                    parent=self.root,
+                )
 
     def _picker_finished(self):
         """Called when picker ends (e.g. from queue-based flow); ensure cleanup."""

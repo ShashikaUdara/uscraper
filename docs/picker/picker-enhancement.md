@@ -210,6 +210,13 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Estimated effort**: Small (0.5–1 day).
 
+**Progress (Phase 4c — Implemented)**:
+- **Picker → dialog wiring**: Already in place from 4a/4b. Picker sends `(selector, inspection)`; GUI unpacks and calls `ask_element_options(parent, selector, inspection=inspection, existing_columns=existing_columns)`.
+- **Existing columns**: Main window builds `existing_columns` from `list_profile_elements(conn, profile_id)` (column_name list) and passes it into the dialog. Dialog uses it in `_column_suggestions` and for duplicate check.
+- **Duplicate-column warning**: In the dialog, on OK: if the chosen column name is in `existing_columns`, `messagebox.askyesno("Duplicate column name", "This column name is already used in this profile. Use it anyway?")` is shown. If the user chooses No, the dialog stays open; if Yes, the result is returned. If the user confirms and the DB still rejects (e.g. race), main window catches `sqlite3.IntegrityError` from `add_to_profile` and shows "This column name already exists in the profile. Choose a different name."
+- **Error handling**: When inspection is missing or invalid, picker already passes `(selector, None)`; dialog opens with `inspection=None` and works with selector-only (no pre-filled dropdowns).
+- **Tests**: `test_add_element_duplicate_column_name_raises` in `tests/test_db.py` documents that duplicate (profile_id, column_name) raises `IntegrityError` (so the GUI can catch it).
+
 ---
 
 ### Phase 4d: Polish and Edge Cases
@@ -243,7 +250,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 |-------|--------|------------------|--------|
 | **4a** | Element inspection in browser | JS inspector; payload (tag, attributes, text preview); picker returns inspection with selector | **Done** |
 | **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview | **Done** |
-| **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling | Pending |
+| **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling | **Done** |
 | **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs | Pending |
 
 ---

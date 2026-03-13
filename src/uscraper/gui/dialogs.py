@@ -242,6 +242,14 @@ def ask_element_options(
         if not col:
             messagebox.showwarning("Missing column", "Enter a column name.", parent=d)
             return
+        if existing_columns and col in existing_columns:
+            if not messagebox.askyesno(
+                "Duplicate column name",
+                "This column name is already used in this profile. Use it anyway?",
+                icon="warning",
+                parent=d,
+            ):
+                return
         ext = type_var.get().strip() or "text"
         arg = get_selected_attr() if ext == "attribute" else None
         if ext == "attribute" and not arg:

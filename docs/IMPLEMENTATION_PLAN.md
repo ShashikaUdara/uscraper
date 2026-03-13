@@ -13,7 +13,7 @@ This document describes the implementation plan for a **universal, customizable 
 | **Phase 0** | Pending | Project layout partially done (see Phase 1); full bootstrap in progress. |
 | **Phase 1** | **Done** | Database and configuration layer implemented (see below). |
 | **Phase 2** | **Done** | Browser/driver auto-install implemented (see below). |
-| Phase 3 | Pending | Scraping engine. |
+| **Phase 3** | **Done** | Scraping engine implemented (see below). |
 | Phase 4 | Pending | Element picker. |
 | Phase 5 | Pending | Desktop GUI. |
 | Phase 6 | Pending | Ubuntu packaging. |
@@ -37,6 +37,16 @@ This document describes the implementation plan for a **universal, customizable 
 - **2.4 Error handling:** On install failure, `install_status='failed'` and `install_error_message` set; `ensure_browser_installed` returns `(False, error_message)`. Schema: `drivers.install_error_message` added (with migration in `connection._migrate_drivers_table` for existing DBs).
 - **2.5 Selenium:** Deferred (optional).
 - **Deliverables:** Selecting a browser triggers install when needed; driver info persisted in SQLite. **Tests:** 4 new tests in `test_db.py` (already installed, success/failure mocked, unknown browser). **Makefile:** `make help`, `venv`, `install`, `install-dev`, `test`, `run`, `install-browsers`, `install-deps`, `clean`.
+
+### Phase 3 — Completed
+
+- **3.1 Engine interface:** `run_scrape(profile_id, conn=None)` in `src/uscraper/engine/runner.py` — loads profile with elements from DB, resolves browser/driver, builds output path from `app_config.output_dir` (default `~/.config/uscraper/scrapes`), calls `start_run()`, launches browser, navigates, extracts, writes CSV, then `complete_run()` or `fail_run()`; returns result dict (`success`, `run_id`, `output_csv_path`, `row_count`, `error_message`).
+- **3.2 Browser launch:** `src/uscraper/engine/playwright_driver.py` — `launch_browser_from_driver(executable_path, options)` context manager; parses `playwright:chromium` marker, uses `launch_playwright_page(internal_name, options)` with sync Playwright; options from profile `options_json`: `headless`, `timeout`, `viewport`.
+- **3.3 Page load:** `page.goto(url, wait_until='domcontentloaded')`, then `page.wait_for_load_state('networkidle')` with configurable timeout.
+- **3.4 Element extraction:** For each `scrape_elements` row, `_extract_column_values(page, selector, extract_type, extract_arg)` uses `page.locator(selector)` and for each match returns text, attribute, or HTML; `_extract_all_elements(page, elements)` builds rectangular rows (max length across columns, pad with `""`).
+- **3.5 CSV generation:** `src/uscraper/engine/csv_export.py` — `write_rows_to_csv(path, rows, column_order)` UTF-8; path pattern `scrape_{profile_name}_{YYYY-MM-DD_HH-MM-SS}.csv`; `row_count` and `output_csv_path` updated in `scrape_runs`.
+- **3.6 Concurrency:** Single run per `run_scrape` call; no queue (optional later).
+- **Deliverables:** Engine produces CSV per run and updates DB. **Tests:** `tests/test_engine.py` (10 tests) — CSV export, `_sanitize_filename`, `_profile_options`, `_extract_all_elements` with fake page, `run_scrape` for profile not found / no elements / browser not installed / success with mocked browser; fixture `tests/fixtures/sample.html` for reference.
 
 ---
 
@@ -397,4 +407,4 @@ uscraper/
 
 ---
 
-*Document version: 1.2 — Phase 1 and Phase 2 implemented; progress tracked in §0.*
+*Document version: 1.3 — Phase 1, 2, and 3 implemented; progress tracked in §0.*

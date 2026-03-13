@@ -15,7 +15,7 @@ This document describes the implementation plan for a **universal, customizable 
 | **Phase 2** | **Done** | Browser/driver auto-install implemented (see below). |
 | **Phase 3** | **Done** | Scraping engine implemented (see below). |
 | **Phase 4** | **Done** | Element selection mechanism (picker) implemented (see below). |
-| Phase 5 | Pending | Desktop GUI. |
+| **Phase 5** | **Done** | Desktop GUI (Tkinter) implemented (see below). |
 | Phase 6 | Pending | Ubuntu packaging. |
 | Phase 7 | Pending | Testing and polish. |
 
@@ -56,6 +56,17 @@ This document describes the implementation plan for a **universal, customizable 
 - **4.4 Persist to profile:** `add_to_profile()` delegates to `db.profiles.add_element` with `sort_order` auto-incremented; list/remove/reorder use DB APIs.
 - **4.5 List and remove:** `list_profile_elements(conn, profile_id)`, `remove_profile_element(conn, element_id)`, `reorder_profile_elements(conn, profile_id, element_ids_in_order)` in `picker.py` delegate to `db.profiles` (get_elements_for_profile, delete_element, update_element).
 - **Deliverables:** Point-and-click selection produces stable selectors; selections stored in SQLite. **Tests:** `tests/test_picker.py` (6 tests) — selector JS non-empty, list/remove/reorder elements, `add_to_profile` without browser, optional integration test for selector validity in real browser (skipped if Chromium not installed).
+
+### Phase 5 — Completed
+
+- **5.1 Framework:** **Tkinter** (stdlib); no extra pip dependency. On Ubuntu: `sudo apt install python3-tk` if needed.
+- **5.2 Main window:** `src/uscraper/gui/main_window.py` — Profile combo (load/save), URL bar, browser dropdown (from `list_browsers`), “Install / Use” button, “Select elements”, “Run scrape”, list of selected elements with “Remove”, status bar. Menu: File (Settings, Exit), Help (About).
+- **5.3 Profile handling:** New profile via `gui/dialogs.py` `ask_profile()` (name, URL, browser); create with `create_profile`; selection loads URL and browser into form; URL and browser persisted on picker start and before run.
+- **5.4 Browser dropdown:** Populated from DB; shows install status; “Install / Use” runs `ensure_browser_installed` in a thread and refreshes list.
+- **5.5 Element picker UI:** “Select elements” launches `ElementPickerSession` in a thread (headless=False); each click delivers selector via queue; main thread shows `ask_element_options()` (column name, extract type, attribute name) and calls `add_to_profile`; elements list refreshed; picker closed when user closes the browser window.
+- **5.6 Run and progress:** “Run scrape” runs `run_scrape(profile_id)` in a thread; status shows “Running scrape…”; on completion, success (path + row count) or error in messagebox and status bar.
+- **5.7 Settings:** File → Settings opens directory chooser for default CSV output dir; stored in `app_config.output_dir`.
+- **Deliverables:** Usable GUI on Ubuntu for URL → profile → browser → pick elements → run → CSV. Entry point: `uscraper` in `__main__.py` launches `run_gui()`; clear error if Tkinter is missing.
 
 ---
 
@@ -416,4 +427,4 @@ uscraper/
 
 ---
 
-*Document version: 1.4 — Phase 1–4 implemented; progress tracked in §0.*
+*Document version: 1.5 — Phase 1–5 implemented; progress tracked in §0.*

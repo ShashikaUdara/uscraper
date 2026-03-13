@@ -1,12 +1,17 @@
-"""Entry point for uscraper (GUI will be added in a later phase)."""
-from uscraper.db import ensure_db
+"""Entry point for uscraper — launches the desktop GUI."""
+import sys
 
 
 def main() -> None:
-    # Ensure DB exists and schema is applied (for CLI/startup)
-    conn = ensure_db()
-    conn.close()
-    print("uscraper: DB ready. GUI not yet implemented.")
+    try:
+        from uscraper.gui import run_gui
+    except ImportError as e:
+        if "tkinter" in str(e).lower() or "tk" in str(e).lower():
+            print("uscraper: Tkinter not available. On Ubuntu install: sudo apt install python3-tk", file=sys.stderr)
+        else:
+            print(f"uscraper: Failed to load GUI: {e}", file=sys.stderr)
+        sys.exit(1)
+    run_gui()
 
 
 if __name__ == "__main__":

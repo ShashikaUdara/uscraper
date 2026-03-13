@@ -16,4 +16,15 @@ src/uscraper/db/browsers.py
 src/uscraper/db/connection.py
 src/uscraper/db/profiles.py
 src/uscraper/db/runs.py
+src/uscraper/engine/__init__.py
+src/uscraper/engine/csv_export.py
+src/uscraper/engine/picker.py
+src/uscraper/engine/playwright_driver.py
+src/uscraper/engine/runner.py
+src/uscraper/engine/selector.py
+src/uscraper/gui/__init__.py
+src/uscraper/gui/dialogs.py
+src/uscraper/gui/main_window.py
 tests/test_db.py
+tests/test_engine.py
+tests/test_picker.py

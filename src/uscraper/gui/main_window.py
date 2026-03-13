@@ -24,6 +24,7 @@ from uscraper.db import (
 )
 from uscraper.engine import (
     ElementPickerSession,
+    PICKER_CLOSED,
     list_profile_elements,
     remove_profile_element,
     run_scrape,
@@ -253,9 +254,10 @@ class MainWindow:
                     self._picker_session = session
                     while True:
                         sel = session.get_next_selector(timeout=0.5)
-                        if sel is None:
+                        if sel is PICKER_CLOSED:
                             break
-                        self._picker_queue.put(("selector", sel))
+                        if sel is not None:
+                            self._picker_queue.put(("selector", sel))
             except Exception as e:
                 self._picker_queue.put(("error", str(e)))
             finally:

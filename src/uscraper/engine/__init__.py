@@ -4,6 +4,7 @@ from uscraper.engine.runner import run_scrape
 from uscraper.engine.csv_export import write_rows_to_csv
 from uscraper.engine.picker import (
     ElementPickerSession,
+    PICKER_CLOSED,
     list_profile_elements,
     remove_profile_element,
     reorder_profile_elements,
@@ -14,6 +15,7 @@ __all__ = [
     "run_scrape",
     "write_rows_to_csv",
     "ElementPickerSession",
+    "PICKER_CLOSED",
     "list_profile_elements",
     "remove_profile_element",
     "reorder_profile_elements",

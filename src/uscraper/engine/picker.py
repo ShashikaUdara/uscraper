@@ -4,6 +4,7 @@ and return a stable CSS selector for each element the user clicks.
 Persist selections to a scrape profile via DB (add_element).
 """
 import queue
+import threading
 from typing import Any, Dict, List, Optional
 
 import sqlite3
@@ -12,8 +13,12 @@ from uscraper.engine.playwright_driver import launch_browser_from_driver
 from uscraper.engine.selector import get_selector_for_element_js
 
 
-# Sentinel put in queue when session is closed
+# Sentinel put in queue when session is closed (internal)
 _PICKER_CLOSED = object()
+
+# Public sentinel: get_next_selector returns this when the session is closed (user closed browser).
+# Use "if sel is PICKER_CLOSED: break" in the loop; do not break on None (timeout).
+PICKER_CLOSED = object()
 
 
 class ElementPickerSession:
@@ -73,10 +78,30 @@ class ElementPickerSession:
         })();
         """
         self._page.evaluate(inject_click_js)
+        # Daemon thread: when user closes the browser, put sentinel so the loop can exit
+        self._close_check_stop = threading.Event()
+        def _watch_closed():
+            while not self._close_check_stop.wait(0.7):
+                if self._closed:
+                    break
+                try:
+                    if self._page:
+                        self._page.evaluate("1")
+                except Exception:
+                    self._closed = True
+                    try:
+                        self._queue.put_nowait(_PICKER_CLOSED)
+                    except queue.Full:
+                        pass
+                    break
+        self._close_check_thread = threading.Thread(target=_watch_closed, daemon=True)
+        self._close_check_thread.start()
         return self
 
     def __exit__(self, *args) -> None:
         self._closed = True
+        if getattr(self, "_close_check_stop", None) is not None:
+            self._close_check_stop.set()
         self._queue.put(_PICKER_CLOSED)
         if self._browser_cm is not None:
             self._browser_cm.__exit__(*args)
@@ -88,17 +113,19 @@ class ElementPickerSession:
         """Playwright Page for the picker browser (e.g. for GUI to embed or drive)."""
         return self._page
 
-    def get_next_selector(self, timeout: Optional[float] = None) -> Optional[str]:
+    def get_next_selector(self, timeout: Optional[float] = None):
         """
-        Block until the user clicks an element in the page, then return its CSS selector.
-        Returns None if timeout expires or the session was closed.
+        Block until the user clicks an element, or timeout, or session is closed.
+        Returns the CSS selector (str) when the user clicked an element.
+        Returns None if timeout expires (no click yet — keep polling).
+        Returns PICKER_CLOSED when the session was closed (exit the loop).
         """
         if self._closed:
-            return None
+            return PICKER_CLOSED
         try:
             result = self._queue.get(timeout=timeout)
             if result is _PICKER_CLOSED:
-                return None
+                return PICKER_CLOSED
             return result
         except queue.Empty:
             return None

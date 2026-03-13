@@ -14,7 +14,7 @@ This document describes the implementation plan for a **universal, customizable 
 | **Phase 1** | **Done** | Database and configuration layer implemented (see below). |
 | **Phase 2** | **Done** | Browser/driver auto-install implemented (see below). |
 | **Phase 3** | **Done** | Scraping engine implemented (see below). |
-| Phase 4 | Pending | Element picker. |
+| **Phase 4** | **Done** | Element selection mechanism (picker) implemented (see below). |
 | Phase 5 | Pending | Desktop GUI. |
 | Phase 6 | Pending | Ubuntu packaging. |
 | Phase 7 | Pending | Testing and polish. |
@@ -47,6 +47,15 @@ This document describes the implementation plan for a **universal, customizable 
 - **3.5 CSV generation:** `src/uscraper/engine/csv_export.py` — `write_rows_to_csv(path, rows, column_order)` UTF-8; path pattern `scrape_{profile_name}_{YYYY-MM-DD_HH-MM-SS}.csv`; `row_count` and `output_csv_path` updated in `scrape_runs`.
 - **3.6 Concurrency:** Single run per `run_scrape` call; no queue (optional later).
 - **Deliverables:** Engine produces CSV per run and updates DB. **Tests:** `tests/test_engine.py` (10 tests) — CSV export, `_sanitize_filename`, `_profile_options`, `_extract_all_elements` with fake page, `run_scrape` for profile not found / no elements / browser not installed / success with mocked browser; fixture `tests/fixtures/sample.html` for reference.
+
+### Phase 4 — Completed
+
+- **4.1 Picker mode:** `ElementPickerSession` in `src/uscraper/engine/picker.py` — context manager that launches browser (headless=False) via `launch_browser_from_driver`, loads URL, injects click listener; user clicks in the page and each click is reported as a CSS selector via `get_next_selector()` (blocking queue).
+- **4.2 Selector generation:** `src/uscraper/engine/selector.py` — injectable JS (`get_selector_for_element_js()`) defines `window.__getSelector(el)`: uses `id` with `CSS.escape` if unique, else builds path from root using `tag:nth-child(n)`; optional `compute_selector_via_page(page, element_handle)` for Python-side use.
+- **4.3 Extract type and column:** For each picked element the caller (e.g. GUI) supplies column name and extract type (text/attribute/html) and optional attribute name; `session.add_to_profile(conn, profile_id, selector, column_name, extract_type, extract_arg)` persists to `scrape_elements`.
+- **4.4 Persist to profile:** `add_to_profile()` delegates to `db.profiles.add_element` with `sort_order` auto-incremented; list/remove/reorder use DB APIs.
+- **4.5 List and remove:** `list_profile_elements(conn, profile_id)`, `remove_profile_element(conn, element_id)`, `reorder_profile_elements(conn, profile_id, element_ids_in_order)` in `picker.py` delegate to `db.profiles` (get_elements_for_profile, delete_element, update_element).
+- **Deliverables:** Point-and-click selection produces stable selectors; selections stored in SQLite. **Tests:** `tests/test_picker.py` (6 tests) — selector JS non-empty, list/remove/reorder elements, `add_to_profile` without browser, optional integration test for selector validity in real browser (skipped if Chromium not installed).
 
 ---
 
@@ -407,4 +416,4 @@ uscraper/
 
 ---
 
-*Document version: 1.3 — Phase 1, 2, and 3 implemented; progress tracked in §0.*
+*Document version: 1.4 — Phase 1–4 implemented; progress tracked in §0.*

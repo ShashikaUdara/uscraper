@@ -17,7 +17,7 @@ This document describes the implementation plan for a **universal, customizable 
 | **Phase 4** | **Done** | Element selection mechanism (picker) implemented (see below). |
 | **Phase 5** | **Done** | Desktop GUI (Tkinter) implemented (see below). |
 | **Phase 6** | **Done** | Ubuntu installability and packaging (see below). |
-| Phase 7 | Pending | Testing and polish. |
+| **Phase 7** | **Done** | Testing and polish (see below). |
 
 ### Phase 1 — Completed
 
@@ -77,6 +77,14 @@ This document describes the implementation plan for a **universal, customizable 
 - **6.5 First-run:** On first launch, GUI calls `ensure_db()` which creates `~/.config/uscraper/` and initializes DB and seeds browsers; documented in `docs/INSTALL.md` (no automatic browser install; user installs from app or `make install-browsers`).
 - **6.6 README:** README and `docs/INSTALL.md` provide full Ubuntu install steps (apt, venv, make install, make install-deps, make install-browsers, make run); `scripts/install_deps_ubuntu.sh` for apt-only system packages; Makefile targets `install-deps-ubuntu`, `dist-deb`, `dist-standalone` and updated `help`.
 - **Deliverables:** Clear install steps; pip + venv + make as primary method; optional .deb and standalone build documented and scripted.
+
+### Phase 7 — Completed
+
+- **7.1 Unit tests:** Existing coverage in `test_db.py` (26), `test_engine.py` (11), `test_picker.py` (6), plus new `test_logging.py` (2). DB, config API, engine with mock/fixture, picker, and logging covered.
+- **7.2 Integration test:** `test_run_scrape_success` extended to assert full CSV structure (header row = column names, data rows count and content) via `csv.reader`; full flow: profile + elements → run_scrape with mocked browser → CSV exists with expected columns and rows.
+- **7.3 Error handling:** `test_run_scrape_failure_updates_run_record` added: mock browser launch to raise (e.g. timeout); assert `run_scrape` returns `success=False` and `error_message`; assert `scrape_runs` row has `status='failed'`, `error_message` set, `finished_at` set. Runner already called `fail_run(conn, run_id, str(e))` on exception; GUI shows error in messagebox and status bar.
+- **7.4 Logging:** `src/uscraper/logging_config.py` — `setup_logging(level, console, log_dir)` configures logger `uscraper` with FileHandler to `~/.config/uscraper/logs/uscraper.log` and optional StreamHandler to stderr; `get_logger(name)` for submodules. Called from `__main__.main()` at startup; runner uses `get_logger(__name__)` and logs start, completion, and exception on failure. Tests in `test_logging.py` for setup (creates log dir/file, message written) and get_logger.
+- **Deliverables:** Test suite (44 tests, 1 skipped); robust error reporting (run record + GUI); structured logging to file and console.
 
 ---
 
@@ -437,4 +445,4 @@ uscraper/
 
 ---
 
-*Document version: 1.6 — Phase 1–6 implemented; progress tracked in §0.*
+*Document version: 1.7 — Phase 1–7 implemented; progress tracked in §0.*

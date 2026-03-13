@@ -3,6 +3,7 @@ Scraping engine: single entry point run_scrape(profile_id).
 Loads profile and elements from DB, launches browser, extracts data, writes CSV, updates scrape_runs.
 """
 import json
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Optional
 import sqlite3
 
 from uscraper.config import get_config_dir
+from uscraper.logging_config import get_logger
 from uscraper.db import (
     ensure_db,
     get_config_default,
@@ -166,8 +168,10 @@ def run_scrape(
 
         run_id = start_run(conn, profile_id, str(csv_path))
         options = _profile_options(profile)
+        log = get_logger(__name__)
 
         try:
+            log.info("Starting scrape profile_id=%s run_id=%s", profile_id, run_id)
             with launch_browser_from_driver(browser.get("executable_path"), options) as page:
                 page.goto(profile["url"], wait_until="domcontentloaded", timeout=options.get("timeout", 30000))
                 page.wait_for_load_state("networkidle", timeout=options.get("timeout", 10000))
@@ -176,6 +180,7 @@ def run_scrape(
                 write_rows_to_csv(csv_path, rows, column_order)
                 complete_run(conn, run_id, row_count=len(rows))
 
+            log.info("Scrape completed profile_id=%s run_id=%s row_count=%s", profile_id, run_id, len(rows))
             return {
                 "success": True,
                 "run_id": run_id,
@@ -184,6 +189,7 @@ def run_scrape(
                 "error_message": None,
             }
         except Exception as e:
+            log.exception("Scrape failed profile_id=%s run_id=%s: %s", profile_id, run_id, e)
             fail_run(conn, run_id, str(e))
             return {
                 "success": False,

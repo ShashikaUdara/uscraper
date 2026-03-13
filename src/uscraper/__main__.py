@@ -4,6 +4,11 @@ import sys
 
 def main() -> None:
     try:
+        from uscraper.logging_config import setup_logging
+        setup_logging(console=True)
+    except Exception:
+        pass
+    try:
         from uscraper.gui import run_gui
     except ImportError as e:
         if "tkinter" in str(e).lower() or "tk" in str(e).lower():

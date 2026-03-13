@@ -1,4 +1,5 @@
 """Tests for scraping engine: CSV export, runner with mocked browser."""
+import csv
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -189,3 +190,40 @@ def test_run_scrape_success(temp_db, tmp_path):
     run = get_run(temp_db, result["run_id"])
     assert run["status"] == "completed"
     assert run["row_count"] == 2
+
+    # Integration: CSV structure (header + data rows)
+    with open(result["output_csv_path"], encoding="utf-8", newline="") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        data_rows = list(reader)
+    assert header == ["title", "url"]
+    assert len(data_rows) == 2
+    assert data_rows[0] == ["Hello", "https://x.com/1"]
+    assert data_rows[1] == ["World", "https://x.com/2"]
+
+
+def test_run_scrape_failure_updates_run_record(temp_db, tmp_path):
+    """On exception, run record is updated with status failed and error_message."""
+    from uscraper.db import set_config
+
+    update_driver(temp_db, 1, install_status="installed", executable_path="playwright:chromium")
+    set_config(temp_db, "output_dir", str(tmp_path))
+
+    pid = create_profile(temp_db, "FailProfile", "https://example.com", browser_id=1)
+    add_element(temp_db, pid, "h1", "title", extract_type="text")
+
+    @contextmanager
+    def fake_launch_raise(*args, **kwargs):
+        raise RuntimeError("Timeout loading page")
+
+    with patch("uscraper.engine.runner.launch_browser_from_driver", fake_launch_raise):
+        result = run_scrape(pid, conn=temp_db)
+
+    assert result["success"] is False
+    assert "Timeout" in (result.get("error_message") or "")
+    assert result["run_id"] is not None
+
+    run = get_run(temp_db, result["run_id"])
+    assert run["status"] == "failed"
+    assert run["error_message"] and "Timeout" in run["error_message"]
+    assert run["finished_at"] is not None

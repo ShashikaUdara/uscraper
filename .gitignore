@@ -6,3 +6,5 @@ build/
 dist/
 packaging/deb_dist/
 .pytest_cache
+*.log
+logs/

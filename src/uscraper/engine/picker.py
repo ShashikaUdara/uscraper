@@ -2,9 +2,9 @@
 Element picker: open a URL in a browser, inject click-to-select behavior,
 and return a stable CSS selector for each element the user clicks.
 Persist selections to a scrape profile via DB (add_element).
+Must be used from a single thread (Playwright sync API is not thread-safe).
 """
 import queue
-import threading
 from typing import Any, Dict, List, Optional
 
 import sqlite3
@@ -78,30 +78,10 @@ class ElementPickerSession:
         })();
         """
         self._page.evaluate(inject_click_js)
-        # Daemon thread: when user closes the browser, put sentinel so the loop can exit
-        self._close_check_stop = threading.Event()
-        def _watch_closed():
-            while not self._close_check_stop.wait(0.7):
-                if self._closed:
-                    break
-                try:
-                    if self._page:
-                        self._page.evaluate("1")
-                except Exception:
-                    self._closed = True
-                    try:
-                        self._queue.put_nowait(_PICKER_CLOSED)
-                    except queue.Full:
-                        pass
-                    break
-        self._close_check_thread = threading.Thread(target=_watch_closed, daemon=True)
-        self._close_check_thread.start()
         return self
 
     def __exit__(self, *args) -> None:
         self._closed = True
-        if getattr(self, "_close_check_stop", None) is not None:
-            self._close_check_stop.set()
         self._queue.put(_PICKER_CLOSED)
         if self._browser_cm is not None:
             self._browser_cm.__exit__(*args)
@@ -131,12 +111,22 @@ class ElementPickerSession:
             return None
 
     def close(self) -> None:
-        """Signal that the session is done (puts sentinel so get_next_selector returns None)."""
+        """Signal that the session is done (puts sentinel so get_next_selector returns PICKER_CLOSED)."""
         self._closed = True
         try:
-            self._queue.put_nowait(_PICKER_CLOSED)
+            self._queue.put_nowait(_PICKER_CLOSED)  # internal sentinel
         except queue.Full:
             pass
+
+    def is_page_closed(self) -> bool:
+        """Return True if the browser page is closed (e.g. user closed the window). Safe to call from same thread as session."""
+        if self._closed or self._page is None:
+            return True
+        try:
+            self._page.evaluate("1")
+            return False
+        except Exception:
+            return True
 
     def add_to_profile(
         self,

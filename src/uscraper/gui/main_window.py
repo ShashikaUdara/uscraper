@@ -43,9 +43,9 @@ class MainWindow:
 
         self._current_profile_id: Optional[int] = None
         self._picker_session: Optional[ElementPickerSession] = None
-        self._picker_thread: Optional[threading.Thread] = None
         self._picker_queue: queue.Queue = queue.Queue()
         self._after_id: Optional[str] = None
+        self._picker_after_id: Optional[str] = None
 
         self._build_ui()
         self._refresh_browsers()  # Before _refresh_profiles so _on_profile_selected can use _browsers
@@ -246,26 +246,51 @@ class MainWindow:
         update_profile(self.conn, self._current_profile_id, url=url, browser_id=b["id"])
 
         self.picker_btn.config(state="disabled")
-        self.status_var.set("Click an element in the browser window. Close the browser when done.")
+        self.status_var.set("Opening browser…")
+        self.root.update_idletasks()
 
-        def picker_worker():
+        # Run picker on main thread; Playwright sync API must not be used from another thread.
+        try:
+            session = ElementPickerSession(url, b["executable_path"], {"headless": False})
+            session.__enter__()
+            self._picker_session = session
+            self.status_var.set("Click an element in the browser window. Close the browser when done.")
+            self._picker_poll()
+        except Exception as e:
+            self._picker_session = None
+            self.picker_btn.config(state="normal")
+            self.status_var.set("Picker failed.")
+            messagebox.showerror("Picker error", str(e), parent=self.root)
+
+    def _picker_poll(self):
+        """Poll for clicks and closed browser; runs on main thread. Playwright must stay on this thread."""
+        session = self._picker_session
+        if session is None:
+            return
+        if session.is_page_closed():
+            self._picker_cleanup()
+            return
+        sel = session.get_next_selector(timeout=0)
+        if sel is PICKER_CLOSED:
+            self._picker_cleanup()
+            return
+        if sel is not None:
+            self._on_picker_selector(sel)
+        self._picker_after_id = self.root.after(150, self._picker_poll)
+
+    def _picker_cleanup(self):
+        if self._picker_after_id:
+            self.root.after_cancel(self._picker_after_id)
+            self._picker_after_id = None
+        session = self._picker_session
+        if session is not None:
             try:
-                with ElementPickerSession(url, b["executable_path"], {"headless": False}) as session:
-                    self._picker_session = session
-                    while True:
-                        sel = session.get_next_selector(timeout=0.5)
-                        if sel is PICKER_CLOSED:
-                            break
-                        if sel is not None:
-                            self._picker_queue.put(("selector", sel))
-            except Exception as e:
-                self._picker_queue.put(("error", str(e)))
-            finally:
-                self._picker_session = None
-                self.root.after(0, self._picker_finished)
-
-        self._picker_thread = threading.Thread(target=picker_worker, daemon=True)
-        self._picker_thread.start()
+                session.__exit__(None, None, None)
+            except Exception:
+                pass
+            self._picker_session = None
+        self.picker_btn.config(state="normal")
+        self.status_var.set("Picker closed.")
 
     def _poll_picker_queue(self):
         try:
@@ -294,8 +319,8 @@ class MainWindow:
             self.status_var.set(f"Added element «{col}».")
 
     def _picker_finished(self):
-        self.picker_btn.config(state="normal")
-        self.status_var.set("Picker closed.")
+        """Called when picker ends (e.g. from queue-based flow); ensure cleanup."""
+        self._picker_cleanup()
 
     def _remove_element(self):
         if self._current_profile_id is None:

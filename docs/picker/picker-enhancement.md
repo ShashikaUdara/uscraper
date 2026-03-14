@@ -149,7 +149,7 @@ Implementing hover highlight, full-hierarchy display, and clear “scrape all ma
 
 ## 5. Implementation Plan
 
-The work is split into **phases** so that each deliverable is testable and can be merged incrementally.
+The work is split into **phases** so that each deliverable is testable and can be merged incrementally. Phases **4a–4d** cover element inspection, dialog enhancements, wiring, and polish (several are already implemented). Phases **5a–5d** implement the picker usability and scrape-all-matching flow from **Section 4**: hover highlight, full element hierarchy on click, UI clarity that the selector matches all similar elements, and verification of the scraping logic.
 
 ---
 
@@ -308,12 +308,6 @@ The work is split into **phases** so that each deliverable is testable and can b
 - **Duplicate column name warning**: Implemented in Phase 4c; no change in 4d.
 - **Keyboard and focus**: In the element-options dialog, **Enter** confirms (binds to OK) and **Escape** cancels. Initial focus is set to the column-name combobox via `d.after(10, col_combo.focus_set)` so the user can type or pick immediately.
 - **Documentation**: Added a **Using the Picker** section to `docs/INSTALL.md` describing: profile/URL/browser, opening the picker, clicking an element, the dialog (element preview, selector with Copy, column name suggestions, Extract type, attribute dropdown with View full), OK/Cancel, and that Enter confirms and Escape cancels. This document updated with Phase 4d progress.
-
----
-
-## 5.1 Implementation Plan — Picker Usability and Scrape-All-Matching (Section 4)
-
-The following phases implement the desired flow from **Section 4**: hover highlight, full element hierarchy on click, clear “scrape all matching” messaging, and verification of scraping logic. They build on the existing picker (Phases 4a–4d).
 
 ---
 

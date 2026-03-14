@@ -279,7 +279,12 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Deliverables**: Inspection payload type, JS inspector, picker returns inspection with selector, tests.
 
-**Progress (Phase 4a — Implemented)**: `ElementInspection` in `src/uscraper/engine/inspect.py`; `get_element_inspection_js()`; picker injects and sends full payload; GUI receives `(selector, inspection)`. Verify: `pytest tests/test_inspect.py tests/test_picker.py`.
+**Progress (Phase 4a — Implemented)**  
+- **Payload**: `ElementInspection` dataclass in `src/uscraper/engine/inspect.py` (`tag_name`, `attributes`, `inner_text_preview`, `html_preview`, `selector`); `from_browser_dict()` normalises browser payload and truncates previews (80 / 200 chars).  
+- **JS inspector**: `get_element_inspection_js()` defines `window.__getInspection(el)`; returns `{ selector, tagName, attributes, innerTextPreview, htmlPreview }`. Injected after the selector script in the picker.  
+- **Picker**: Click handler builds payload via `__getInspection(el)` and sends to `__pickerCallback(payload)`; callback accepts dict or string (backward compat); `get_next_selector()` returns `(selector, inspection)` or `PICKER_CLOSED` or `None`.  
+- **GUI**: Main window unpacks `(selector, inspection)` and calls `ask_element_options(parent, selector, inspection)`.  
+- **Verify**: `pytest tests/test_inspect.py tests/test_picker.py` — all tests pass.
 
 ### Phase 4b: Element Options Dialog – Pre-fill and Attribute Dropdown
 

@@ -203,3 +203,166 @@ The following list describes current limitations and known issues of the applica
 ---
 
 This list can be used to prioritise improvements (e.g. pagination, auth, selector robustness, retries, scheduling) and to set expectations for what the application supports today.
+
+---
+
+## 4. Picker Usability: Current Issues and Desired Flow
+
+This section describes the main usability problems with the current picker and the intended operation flow so that the tool behaves like a proper scraping picker: **hover-to-highlight**, **click-to-inspect full hierarchy**, **configure**, and **scrape all matching elements** (not just the one clicked).
+
+### 4.1 Current Picker Issues
+
+- **Not user-friendly; hard to understand**  
+  The biggest issue. The current flow (open browser, click element, get a selector and a small dialog) does not make it obvious what will be scraped or how the choice maps to "all similar items" on the page. Users struggle to understand which area they are targeting and what the tool will do with it.
+
+- **Only the selected element's details are considered**  
+  The picker focuses on the single element the user clicked (its tag, attributes, text). The basic use of a scraping tool is to **scrape all information that matches the same context** — i.e. all similar elements on the page. For example, if the user selects one product card or one link in a list, the tool should be designed to **pick all product cards or all links of that kind**, not just the one clicked. The current design does not make this "select one, scrape all matching" model clear, and the UI does not emphasise that the chosen selector will be used to find **all** matching elements when scraping.
+
+- **No visual feedback before click**  
+  There is no hover highlight. The user cannot see which block or area the cursor is over until after they click, which makes precise selection difficult and increases mistakes.
+
+- **Limited hierarchy and context after click**  
+  After a click, the user sees a summary (tag, attributes, text preview) and a selector. They do not see the **full element hierarchy** (parent/child chain, surrounding structure, all HTML elements and their attributes/classes/ids) in a clear, explorable way. That makes it hard to understand the page structure and to choose the right "context" (e.g. the repeating container) for scraping all similar blocks.
+
+### 4.2 Desired Operation Flow
+
+The operation flow should be as follows.
+
+#### Step 1: Hover — Highlight the element under the cursor
+
+- When the user **hovers** over the picker browser window, the element currently under the mouse should be **visually highlighted** (e.g. outline, background tint, or overlay).
+- This highlight must **clearly show which area** the cursor is on, so the user can see exactly what they are about to select before clicking.
+- Implementation implies injecting a script that tracks `mouseover` / `mousemove`, resolves the element under the cursor, and applies a highlight style (and removes it when the cursor leaves or moves to another element).
+
+#### Step 2: Click — Extract the clicked block and show full element hierarchy
+
+- When the user **clicks** that area, the **clicked block** (the target element) should be "extracted" and presented in the picker UI.
+- The picker should show the **full element hierarchy** for that block, including:
+  - **All HTML elements** in the path (from root to the clicked element, and optionally children).
+  - **Attributes** for each node: class names, ids, data attributes, and other available attributes.
+  - Any other **available details** (tag name, role, text snippet) so the user can easily understand the structure.
+- This hierarchy view should be **easy to read and navigate** (e.g. tree or indented list), so the user can see the context (e.g. "this link is inside this div, inside this section") and decide which level to use as the "repeating unit" for scraping.
+
+#### Step 3: Configure essential elements
+
+- Using the hierarchy and details, the user **configures the essential elements** they want to scrape (e.g. "for each card, get title, link, and price").
+- The UI should make it clear that the **selector** (or chosen level) will be used to find **all similar areas** on the page when scraping — i.e. "all elements matching this context."
+
+#### Step 4: Scrape — All matching areas
+
+- When the user proceeds to **scraping**, the system must **scrape all information for the given context** — i.e. **all similar areas** on the page.
+- For each configured element (e.g. "title", "link"), the engine should use the selector to find **every matching element** on the page and extract the requested data (text, attribute, html), producing one row per repeated block (or one value per match, depending on the chosen data model).
+- This is the core expectation: **select one representative block in the picker → scrape all blocks that match that context.**
+
+### 4.3 Summary Table
+
+| Current problem | Desired behaviour |
+|-----------------|-------------------|
+| No feedback before click | Hover highlights the element under the cursor so the user sees the target area. |
+| Only clicked element's details | Click opens a view showing the **full hierarchy** (elements, attributes, classes, ids) for the clicked block. |
+| Unclear what gets scraped | Make explicit that the chosen selector/context is used to find **all similar elements** on the page. |
+| Scrape = one element? | Scrape = **all** elements matching the configured context (all similar cards, all similar links, etc.). |
+
+Implementing hover highlight, full-hierarchy display, and clear "scrape all matching" behaviour will require changes to both the picker (browser injection, hierarchy extraction, UI) and the documentation so users understand the flow.
+
+---
+
+## 5. Implementation Plan
+
+The work is split into **phases** so that each deliverable is testable and can be merged incrementally. Phases **4a–4d** cover element inspection, dialog enhancements, wiring, and polish (several are already implemented). Phases **5a–5d** implement the picker usability and scrape-all-matching flow from **Section 4**: hover highlight, full element hierarchy on click, UI clarity that the selector matches all similar elements, and verification of the scraping logic.
+
+### Phase 4a: Element Inspection (Data Collection in Browser)
+
+**Objective**: From the picker, when the user clicks an element, collect a structured payload (tag, attributes, text preview, selector) in the browser and pass it to the application.
+
+**Tasks**: (1) Define inspection payload (contract): `tagName`, `attributes` (list of `{name, value}`), `innerTextPreview` (max 80), `htmlPreview` (max 200), `selector`. (2) Implement JS snippet in `engine/inspect.py`: `get_element_inspection_js()` defining `window.__getInspection(el)`. (3) Integrate into picker flow: click handler runs inspector and sends payload. (4) Pass inspection result to GUI; backward compatibility when inspection is missing.
+
+**Deliverables**: Inspection payload type, JS inspector, picker returns inspection with selector, tests.
+
+**Progress (Phase 4a — Implemented)**: `ElementInspection` in `src/uscraper/engine/inspect.py`; `get_element_inspection_js()`; picker injects and sends full payload; GUI receives `(selector, inspection)`. Verify: `pytest tests/test_inspect.py tests/test_picker.py`.
+
+### Phase 4b: Element Options Dialog – Pre-fill and Attribute Dropdown
+
+**Objective**: Dialog accepts inspection and shows dropdowns with the element's real attributes and values.
+
+**Tasks**: Dialog API with `inspection=None`, `existing_columns=None`; column name combobox with suggestions; extract type (text/attribute/html); attribute dropdown with `attr_name → value`; element preview; selector with Copy.
+
+**Progress (Phase 4b — Implemented)**: Implemented in `gui/dialogs.py`; tests in `tests/test_dialogs.py`.
+
+### Phase 4c: Picker–Dialog Wiring and Profile Column List
+
+**Objective**: Wire picker to dialog with inspection and existing columns; duplicate-column warning.
+
+**Progress (Phase 4c — Implemented)**: Main window passes `existing_columns`; dialog warns on duplicate column name; main window catches `IntegrityError` on add.
+
+### Phase 4d: Polish and Edge Cases
+
+**Objective**: Long-value truncation, View full button, keyboard (Enter/Escape), focus, docs.
+
+**Progress (Phase 4d — Implemented)**: View full for attribute value; Enter/Escape and focus; Using the Picker in INSTALL.md.
+
+### Phase 5a: Hover highlight in the picker
+
+**Objective**: When the user hovers over the picker browser, the element under the cursor is visually highlighted (outline/overlay) so the user sees which area they are about to select.
+
+**Tasks**: Inject hover script (mouseover/mousemove), resolve element under cursor, apply highlight style, remove on mouseout; throttle if needed; remove highlight on picker close/navigate.
+
+**Deliverables**: Clear, stable highlight on hover; no stray highlights. **Status**: Pending.
+
+### Phase 5b: Full element hierarchy on click
+
+**Objective**: On click, extract the clicked block and show its full element hierarchy in the picker UI (path from root, all elements, attributes, classes, ids) so the user can choose the right context for "scrape all matching."
+
+**Tasks**: Hierarchy payload (browser): path from root, clicked node details, optional children; GUI: tree or indented list; integrate with configure flow.
+
+**Deliverables**: Full hierarchy on click; hierarchy view in GUI. **Status**: Pending.
+
+### Phase 5c: UI clarity — "Scrape all matching elements"
+
+**Objective**: Make explicit in the UI that the chosen selector will be used to find **all similar elements** when scraping.
+
+**Tasks**: Short copy in dialog (e.g. "When you run a scrape, the tool will find **all elements** that match this selector"); optional live match count; reminder in run flow; doc updates.
+
+**Status**: Pending.
+
+### Phase 5d: Scraping logic — all matching elements (verify and document)
+
+**Objective**: Ensure the engine extracts data for **all** elements matching each selector; document and fix if needed.
+
+**Tasks**: Verify `run_scrape` uses all matches (`locator.count()`, `locator.nth(i)`); document in scraping-flow.md; add code comment.
+
+**Status**: Pending.
+
+---
+
+## 6. Summary Table
+
+| Phase | Focus | Key deliverable | Status |
+|-------|--------|------------------|--------|
+| **4a** | Element inspection in browser | JS inspector; payload; picker returns inspection with selector | **Done** |
+| **4b** | Dialog enhancements | Column combobox; attribute dropdown; element preview | **Done** |
+| **4c** | Wiring and profile columns | Inspection + existing columns; duplicate handling | **Done** |
+| **4d** | Polish | Long-value truncation, View full, keyboard, docs | **Done** |
+| **5a** | Hover highlight | Picker highlights element under cursor on hover | Pending |
+| **5b** | Full element hierarchy | On click, show full DOM hierarchy in GUI | Pending |
+| **5c** | UI clarity | "Scrape all matching" wording and optional match count | Pending |
+| **5d** | Scraping logic | Verify/fix all matches per selector; document | Pending |
+
+---
+
+## 7. Dependencies and Risks
+
+- **Playwright**: Inspection runs inside `page.evaluate`; ensure the element reference or selector is still valid when we run the inspector (same tick or immediately after click).
+- **Tkinter**: Dropdown with "attribute → value" labels; store attr name and show truncated value in the dropdown.
+- **Backward compatibility**: Profiles and runs created without inspection data must still work; dialog must handle `inspection=None`.
+
+---
+
+## 8. Future Enhancements (Out of Scope for Current Phases)
+
+- "Pick again" from the dialog to re-open the picker without closing the dialog.
+- Multiple element selection in one go (e.g. "Add all links in this list").
+- XPath in addition to CSS selector.
+- **Suggested repeating container**: when hovering (Phase 5a), optionally infer and highlight a parent that looks like a repeating block to help users pick the right scope for "scrape all matching."
+
+Note: **Hover highlight** and **full element hierarchy** are in the implementation plan as Phase 5a and Phase 5b.

@@ -343,7 +343,14 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Tasks**: Hierarchy payload (browser): path from root, clicked node details, optional children; GUI: tree or indented list; integrate with configure flow.
 
-**Deliverables**: Full hierarchy on click; hierarchy view in GUI. **Status**: Pending.
+**Deliverables**: Full hierarchy on click; hierarchy view in GUI.
+
+**Progress (Phase 5b — Implemented)**  
+- **Hierarchy payload (browser)**: `get_element_hierarchy_js()` in `src/uscraper/engine/inspect.py` defines `window.__getHierarchy(el)`, returning `{ pathFromRoot, clickedNode, children }`. Path from root: nodes from document root down to the clicked element; each node has tagName, id, className, attributes (name/value, value truncated), textPreview (capped). clickedNode: same structure for the clicked element. children: first-level child elements (up to 20), same node shape.  
+- **Python types**: `HierarchyNode` (tag_name, id, class_name, attributes, text_preview) and `ElementHierarchy` (path_from_root, clicked_node, children) with `from_browser_dict()` in `inspect.py`.  
+- **Picker**: Click handler merges `payload.hierarchy = window.__getHierarchy(el)` into the payload; callback unpacks and queues `(selector, inspection, hierarchy)`. `get_next_selector()` returns that 3-tuple. Hierarchy script is evaluated after inspection script.  
+- **GUI**: Main window passes `hierarchy` into `ask_element_options(..., hierarchy)`. Dialog shows an **Element hierarchy** section (when hierarchy is present): read-only scrollable Text with indented path from root, "← clicked" on the last path node, then first-level children. Node display: `<tag>#id.class`.  
+- **Verify**: `pytest tests/test_inspect.py tests/test_picker.py` — hierarchy JS, HierarchyNode/ElementHierarchy parsing, picker 3-tuple return; dialog accepts hierarchy.
 
 ### Phase 5c: UI clarity — "Scrape all matching elements"
 
@@ -372,7 +379,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 | **4c** | Wiring and profile columns | Inspection + existing columns; duplicate handling | **Done** |
 | **4d** | Polish | Long-value truncation, View full, keyboard, docs | **Done** |
 | **5a** | Hover highlight | Picker highlights element under cursor on hover | **Done** |
-| **5b** | Full element hierarchy | On click, show full DOM hierarchy in GUI | Pending |
+| **5b** | Full element hierarchy | On click, show full DOM hierarchy in GUI | **Done** |
 | **5c** | UI clarity | "Scrape all matching" wording and optional match count | Pending |
 | **5d** | Scraping logic | Verify/fix all matches per selector; document | Pending |
 

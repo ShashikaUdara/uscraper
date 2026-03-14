@@ -277,8 +277,8 @@ class MainWindow:
                 self._picker_cleanup()
                 return
             if result is not None:
-                selector, inspection = result
-                self._on_picker_selector(selector, inspection)
+                selector, inspection, hierarchy = result
+                self._on_picker_selector(selector, inspection, hierarchy)
         except Exception:
             # Keep polling so further selections work; do not leave button stuck disabled
             pass
@@ -311,14 +311,14 @@ class MainWindow:
             pass
         self._after_id = self.root.after(200, self._poll_picker_queue)
 
-    def _on_picker_selector(self, selector: str, inspection=None):
+    def _on_picker_selector(self, selector: str, inspection=None, hierarchy=None):
         existing_columns = []
         if self._current_profile_id is not None:
             for el in list_profile_elements(self.conn, self._current_profile_id):
                 name = (el.get("column_name") or "").strip()
                 if name:
                     existing_columns.append(name)
-        opts = ask_element_options(self.root, selector, inspection, existing_columns)
+        opts = ask_element_options(self.root, selector, inspection, existing_columns, hierarchy)
         if not opts:
             return
         col, ext, arg = opts

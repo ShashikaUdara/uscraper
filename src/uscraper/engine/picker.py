@@ -9,7 +9,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlite3
 
-from uscraper.engine.inspect import ElementInspection, get_element_inspection_js
+from uscraper.engine.inspect import (
+    ElementHierarchy,
+    ElementInspection,
+    get_element_hierarchy_js,
+    get_element_inspection_js,
+)
 from uscraper.engine.playwright_driver import launch_browser_from_driver
 from uscraper.engine.selector import get_selector_for_element_js
 
@@ -101,14 +106,16 @@ class ElementPickerSession:
         if self._closed:
             return
         if isinstance(payload, str):
-            self._queue.put((payload, None))
+            self._queue.put((payload, None, None))
             return
         if isinstance(payload, dict):
             inspection = ElementInspection.from_browser_dict(payload)
             selector = inspection.selector if inspection else (payload.get("selector") or "")
-            self._queue.put((selector, inspection))
+            hierarchy_data = payload.get("hierarchy")
+            hierarchy = ElementHierarchy.from_browser_dict(hierarchy_data) if hierarchy_data else None
+            self._queue.put((selector, inspection, hierarchy))
             return
-        self._queue.put(("", None))
+        self._queue.put(("", None, None))
 
     def __enter__(self) -> "ElementPickerSession":
         self._browser_cm = launch_browser_from_driver(
@@ -119,6 +126,7 @@ class ElementPickerSession:
         self._page.add_init_script(get_selector_for_element_js())
         self._page.evaluate(get_selector_for_element_js())
         self._page.evaluate(get_element_inspection_js())
+        self._page.evaluate(get_element_hierarchy_js())
 
         self._page.expose_function(
             "__pickerCallback",
@@ -137,7 +145,11 @@ class ElementPickerSession:
               var el = e.target;
               if (typeof window.__getInspection === 'function') {
                 var payload = window.__getInspection(el);
-                window.__pickerCallback(payload || { selector: window.__getSelector ? window.__getSelector(el) : '' });
+                if (!payload) payload = { selector: window.__getSelector ? window.__getSelector(el) : '' };
+                if (typeof window.__getHierarchy === 'function') {
+                  try { payload.hierarchy = window.__getHierarchy(el); } catch (hErr) {}
+                }
+                window.__pickerCallback(payload);
               } else if (typeof window.__getSelector === 'function') {
                 window.__pickerCallback({ selector: window.__getSelector(el) });
               }
@@ -165,11 +177,11 @@ class ElementPickerSession:
 
     def get_next_selector(
         self, timeout: Optional[float] = None
-    ) -> Union[Tuple[str, Optional[ElementInspection]], None]:
+    ) -> Union[Tuple[str, Optional[ElementInspection], Optional[ElementHierarchy]], None]:
         """
         Block until the user clicks an element, or timeout, or session is closed.
-        Returns (selector, inspection) when the user clicked an element.
-        inspection may be None if inspection failed or is unavailable.
+        Returns (selector, inspection, hierarchy) when the user clicked an element.
+        inspection and hierarchy may be None if unavailable.
         Returns None if timeout expires (no click yet — keep polling).
         Returns PICKER_CLOSED when the session was closed (exit the loop).
         """
@@ -179,7 +191,7 @@ class ElementPickerSession:
             result = self._queue.get(timeout=timeout)
             if result is _PICKER_CLOSED:
                 return PICKER_CLOSED
-            return result  # (selector, inspection)
+            return result  # (selector, inspection, hierarchy)
         except queue.Empty:
             return None
 

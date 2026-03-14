@@ -1,8 +1,11 @@
-"""Tests for element inspection: ElementInspection, from_browser_dict, get_element_inspection_js."""
+"""Tests for element inspection: ElementInspection, hierarchy (Phase 5b), get_element_inspection_js."""
 import pytest
 
 from uscraper.engine.inspect import (
+    ElementHierarchy,
     ElementInspection,
+    HierarchyNode,
+    get_element_hierarchy_js,
     get_element_inspection_js,
     INNER_TEXT_PREVIEW_LEN,
     HTML_PREVIEW_LEN,
@@ -101,3 +104,53 @@ def test_from_browser_dict_skips_invalid_attributes():
     assert len(insp.attributes) == 2
     assert insp.attributes[0]["name"] == "href"
     assert insp.attributes[1]["name"] == "y"
+
+
+# --- Phase 5b: hierarchy ---
+
+
+def test_get_element_hierarchy_js_returns_expected():
+    js = get_element_hierarchy_js()
+    assert isinstance(js, str)
+    assert "__getHierarchy" in js
+    assert "pathFromRoot" in js
+    assert "clickedNode" in js
+    assert "children" in js
+    assert len(js) > 150
+
+
+def test_hierarchy_node_from_browser_dict():
+    data = {"tagName": "a", "id": "x", "className": "nav link", "attributes": [{"name": "href", "value": "u"}], "textPreview": "Click"}
+    node = HierarchyNode.from_browser_dict(data)
+    assert node.tag_name == "a"
+    assert node.id == "x"
+    assert node.class_name == "nav link"
+    assert len(node.attributes) == 1
+    assert node.attributes[0]["name"] == "href"
+    assert node.text_preview == "Click"
+
+
+def test_element_hierarchy_from_browser_dict():
+    data = {
+        "pathFromRoot": [
+            {"tagName": "html", "id": "", "className": "", "attributes": [], "textPreview": ""},
+            {"tagName": "body", "id": "", "className": "", "attributes": [], "textPreview": ""},
+            {"tagName": "a", "id": "m", "className": "nav", "attributes": [{"name": "href", "value": "u"}], "textPreview": "Link"},
+        ],
+        "clickedNode": {"tagName": "a", "id": "m", "className": "nav", "attributes": [{"name": "href", "value": "u"}], "textPreview": "Link"},
+        "children": [{"tagName": "span", "id": "", "className": "", "attributes": [], "textPreview": "x"}],
+    }
+    h = ElementHierarchy.from_browser_dict(data)
+    assert h is not None
+    assert len(h.path_from_root) == 3
+    assert h.path_from_root[0].tag_name == "html"
+    assert h.path_from_root[2].tag_name == "a"
+    assert h.clicked_node.tag_name == "a"
+    assert h.clicked_node.id == "m"
+    assert len(h.children) == 1
+    assert h.children[0].tag_name == "span"
+
+
+def test_element_hierarchy_from_browser_dict_none_or_invalid():
+    assert ElementHierarchy.from_browser_dict(None) is None
+    assert ElementHierarchy.from_browser_dict("not a dict") is None

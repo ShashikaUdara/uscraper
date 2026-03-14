@@ -4,7 +4,7 @@ from tkinter import ttk, messagebox, simpledialog, filedialog
 from typing import Optional, Tuple, List, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from uscraper.engine.inspect import ElementInspection
+    from uscraper.engine.inspect import ElementHierarchy, ElementInspection
 
 # Truncate attribute value in dropdown display (Phase 4b)
 ATTR_DISPLAY_VALUE_LEN = 40
@@ -116,28 +116,72 @@ def _suggest_extract_and_attr(inspection: Optional["ElementInspection"]) -> Tupl
     return ("text", None)
 
 
+def _format_hierarchy_node(node: Any) -> str:
+    """Format a HierarchyNode for display: tag + id + class."""
+    tag = getattr(node, "tag_name", "") or ""
+    id_val = getattr(node, "id", "") or ""
+    cls = getattr(node, "class_name", "") or ""
+    parts = [f"<{tag}>" if tag else "?"]
+    if id_val:
+        parts.append(f"#{id_val}")
+    if cls:
+        parts.append(f".{cls.replace(' ', '.')[:40]}")
+    return " ".join(parts)
+
+
 def ask_element_options(
     parent,
     selector: str,
     inspection: Optional["ElementInspection"] = None,
     existing_columns: Optional[List[str]] = None,
+    hierarchy: Optional["ElementHierarchy"] = None,
 ) -> Optional[Tuple[str, str, Optional[str]]]:
     """Return (column_name, extract_type, extract_arg) or None. extract_arg used when type is 'attribute'.
     inspection: optional ElementInspection from picker (Phase 4a); used for dropdowns and pre-fill.
-    existing_columns: optional list of column names already in the profile (for suggestions and duplicate check)."""
-    from uscraper.engine.inspect import ElementInspection as EI
+    existing_columns: optional list of column names already in the profile (for suggestions and duplicate check).
+    hierarchy: optional ElementHierarchy from picker (Phase 5b); shown as path from root → clicked → children."""
+    from uscraper.engine.inspect import ElementHierarchy as EH, ElementInspection as EI
 
     result = [None]
     inspection = inspection if isinstance(inspection, EI) else None
     existing_columns = list(existing_columns or [])
+    hierarchy = hierarchy if isinstance(hierarchy, EH) else None
 
     d = tk.Toplevel(parent)
     d.title("Element options")
     d.transient(parent)
     d.grab_set()
-    d.geometry("500x380")
+    d.geometry("500x480")
 
     row = 0
+
+    # Element hierarchy (Phase 5b): path from root → clicked → children
+    if hierarchy:
+        ttk.Label(d, text="Element hierarchy:", font=("", 9, "bold")).grid(row=row, column=0, sticky="nw", padx=5, pady=(8, 2))
+        row += 1
+        hier_lines: List[str] = []
+        for depth, node in enumerate(hierarchy.path_from_root):
+            indent = "  " * depth
+            line = indent + _format_hierarchy_node(node)
+            if depth == len(hierarchy.path_from_root) - 1 and hierarchy.path_from_root:
+                line += "  ← clicked"
+            hier_lines.append(line)
+        if hierarchy.children:
+            depth_clicked = len(hierarchy.path_from_root) - 1 if hierarchy.path_from_root else 0
+            for node in hierarchy.children:
+                hier_lines.append("  " * (depth_clicked + 1) + _format_hierarchy_node(node))
+        hier_text = "\n".join(hier_lines) if hier_lines else "(none)"
+        hier_frame = ttk.Frame(d)
+        hier_frame.grid(row=row, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 8))
+        hier_box = tk.Text(hier_frame, height=6, width=70, wrap="word", state="disabled", font=("TkDefaultFont", 9))
+        hier_box.pack(side="left", fill="both", expand=True)
+        sb = ttk.Scrollbar(hier_frame, command=hier_box.yview)
+        sb.pack(side="right", fill="y")
+        hier_box.config(yscrollcommand=sb.set)
+        hier_box.config(state="normal")
+        hier_box.insert("1.0", hier_text)
+        hier_box.config(state="disabled")
+        row += 1
 
     # Element preview (Phase 4b)
     if inspection:

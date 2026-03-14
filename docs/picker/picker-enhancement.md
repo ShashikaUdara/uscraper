@@ -189,7 +189,9 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Estimated effort**: Small (1–2 days).
 
-**Progress (Phase 4a — Implemented)**:
+**Progress (Phase 4a — Implemented)**  
+Phase 4a is **complete**. All deliverables are in place. To verify: run `pytest tests/test_inspect.py tests/test_picker.py` (with the project venv and dependencies installed).
+
 - **Payload contract**: `ElementInspection` dataclass in `src/uscraper/engine/inspect.py` with `tag_name`, `attributes` (list of `{name, value}`), `inner_text_preview`, `html_preview`, `selector`. `from_browser_dict()` normalizes the browser object and truncates previews (80 / 200 chars).
 - **JS inspector**: `get_element_inspection_js()` defines `window.__getInspection(el)`; returns `{ selector, tagName, attributes, innerTextPreview, htmlPreview }`. Injected after the selector script in the picker.
 - **Picker integration**: Click handler builds the full payload in the page via `__getInspection(el)` and sends it to `__pickerCallback(payload)`. Callback accepts either a dict (inspection) or a string (selector only); queue stores `(selector, inspection)`. `get_next_selector()` now returns `(selector, inspection)` or `PICKER_CLOSED` or `None`.

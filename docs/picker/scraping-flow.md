@@ -305,7 +305,12 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Objective**: Wire picker to dialog with inspection and existing columns; duplicate-column warning.
 
-**Progress (Phase 4c — Implemented)**: Main window passes `existing_columns`; dialog warns on duplicate column name; main window catches `IntegrityError` on add.
+**Progress (Phase 4c — Implemented)**  
+- **Picker → dialog wiring**: In `gui/main_window.py`, `_on_picker_selector(selector, inspection)` receives `(selector, inspection)` from the picker and calls `ask_element_options(self.root, selector, inspection, existing_columns)`. Flow is already in place from Phase 4a/4b.  
+- **Existing columns**: When a profile is selected (`_current_profile_id`), main window builds `existing_columns` from `list_profile_elements(conn, profile_id)` (column_name for each element) and passes it into the dialog. Dialog uses it in `_column_suggestions` and for the duplicate check.  
+- **Duplicate-column warning (dialog)**: In the element-options dialog, on OK: if the chosen column name is in `existing_columns`, `messagebox.askyesno("Duplicate column name", "This column name is already used in this profile. Use it anyway?")` is shown. If the user chooses No, the dialog stays open; if Yes, the result is returned.  
+- **IntegrityError (main window)**: If the user confirms and the DB still rejects (e.g. race or override), main window catches `sqlite3.IntegrityError` from `add_to_profile` and shows "This column name already exists in the profile. Choose a different name."  
+- **Verify**: `tests/test_db.py::test_add_element_duplicate_column_name_raises` documents that duplicate (profile_id, column_name) raises `IntegrityError`; picker and dialog tests pass.
 
 ### Phase 4d: Polish and Edge Cases
 

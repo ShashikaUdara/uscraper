@@ -65,6 +65,8 @@ To choose which parts of a page to scrape:
 4. Click **OK** to add the element to the profile, or **Cancel** to skip. Close the browser when you are done picking elements.
 5. Use **Run scrape** to run the profile and export data to CSV.
 
+When you run a scrape, the tool finds **all elements** on the page that match each configured selector and extracts the chosen field (text, attribute, or HTML) for each, producing one row per match in the CSV.
+
 In the element-options dialog, **Enter** confirms and **Escape** cancels.
 
 ## Troubleshooting

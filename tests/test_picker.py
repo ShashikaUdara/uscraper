@@ -104,7 +104,7 @@ def test_picker_callback_with_inspection_payload_returns_tuple():
     session._on_element_clicked(payload)
     result = session.get_next_selector(timeout=0.1)
     assert result is not None and result is not PICKER_CLOSED
-    selector, inspection, hierarchy = result
+    selector, inspection, hierarchy, match_count = result
     assert selector == "a#main.nav"
     assert inspection is not None
     assert inspection.tag_name == "a"
@@ -119,10 +119,11 @@ def test_picker_callback_with_plain_string_returns_selector_and_none_inspection(
     session._on_element_clicked("div > span:nth-child(1)")
     result = session.get_next_selector(timeout=0.1)
     assert result is not None and result is not PICKER_CLOSED
-    selector, inspection, hierarchy = result
+    selector, inspection, hierarchy, match_count = result
     assert selector == "div > span:nth-child(1)"
     assert inspection is None
     assert hierarchy is None
+    assert match_count is None
 
 
 def test_selector_generates_valid_selector_in_browser(temp_db):

@@ -106,16 +106,22 @@ class ElementPickerSession:
         if self._closed:
             return
         if isinstance(payload, str):
-            self._queue.put((payload, None, None))
+            self._queue.put((payload, None, None, None))
             return
         if isinstance(payload, dict):
             inspection = ElementInspection.from_browser_dict(payload)
             selector = inspection.selector if inspection else (payload.get("selector") or "")
             hierarchy_data = payload.get("hierarchy")
             hierarchy = ElementHierarchy.from_browser_dict(hierarchy_data) if hierarchy_data else None
-            self._queue.put((selector, inspection, hierarchy))
+            match_count = payload.get("matchCount")
+            if match_count is not None and not isinstance(match_count, int):
+                try:
+                    match_count = int(match_count)
+                except (TypeError, ValueError):
+                    match_count = None
+            self._queue.put((selector, inspection, hierarchy, match_count))
             return
-        self._queue.put(("", None, None))
+        self._queue.put(("", None, None, None))
 
     def __enter__(self) -> "ElementPickerSession":
         self._browser_cm = launch_browser_from_driver(
@@ -149,6 +155,10 @@ class ElementPickerSession:
                 if (typeof window.__getHierarchy === 'function') {
                   try { payload.hierarchy = window.__getHierarchy(el); } catch (hErr) {}
                 }
+                try {
+                  var sel = payload.selector || '';
+                  if (sel) payload.matchCount = document.querySelectorAll(sel).length;
+                } catch (mcErr) {}
                 window.__pickerCallback(payload);
               } else if (typeof window.__getSelector === 'function') {
                 window.__pickerCallback({ selector: window.__getSelector(el) });
@@ -177,11 +187,11 @@ class ElementPickerSession:
 
     def get_next_selector(
         self, timeout: Optional[float] = None
-    ) -> Union[Tuple[str, Optional[ElementInspection], Optional[ElementHierarchy]], None]:
+    ) -> Union[Tuple[str, Optional[ElementInspection], Optional[ElementHierarchy], Optional[int]], None]:
         """
         Block until the user clicks an element, or timeout, or session is closed.
-        Returns (selector, inspection, hierarchy) when the user clicked an element.
-        inspection and hierarchy may be None if unavailable.
+        Returns (selector, inspection, hierarchy, match_count) when the user clicked an element.
+        inspection, hierarchy, and match_count may be None if unavailable.
         Returns None if timeout expires (no click yet — keep polling).
         Returns PICKER_CLOSED when the session was closed (exit the loop).
         """
@@ -191,7 +201,7 @@ class ElementPickerSession:
             result = self._queue.get(timeout=timeout)
             if result is _PICKER_CLOSED:
                 return PICKER_CLOSED
-            return result  # (selector, inspection, hierarchy)
+            return result  # (selector, inspection, hierarchy, match_count)
         except queue.Empty:
             return None
 

@@ -99,6 +99,7 @@ class MainWindow:
         self.picker_btn.pack(side=tk.LEFT, padx=(0, 5))
         self.run_btn = ttk.Button(af, text="Run scrape", command=self._run_scrape)
         self.run_btn.pack(side=tk.LEFT, padx=5)
+        ttk.Label(af, text="(Scraping extracts data for all elements matching each selector.)", foreground="gray").pack(side=tk.LEFT, padx=(8, 0))
 
         el_frame = ttk.LabelFrame(main, text="Selected elements", padding=5)
         el_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
@@ -277,8 +278,8 @@ class MainWindow:
                 self._picker_cleanup()
                 return
             if result is not None:
-                selector, inspection, hierarchy = result
-                self._on_picker_selector(selector, inspection, hierarchy)
+                selector, inspection, hierarchy, match_count = result
+                self._on_picker_selector(selector, inspection, hierarchy, match_count)
         except Exception:
             # Keep polling so further selections work; do not leave button stuck disabled
             pass
@@ -311,14 +312,14 @@ class MainWindow:
             pass
         self._after_id = self.root.after(200, self._poll_picker_queue)
 
-    def _on_picker_selector(self, selector: str, inspection=None, hierarchy=None):
+    def _on_picker_selector(self, selector: str, inspection=None, hierarchy=None, match_count=None):
         existing_columns = []
         if self._current_profile_id is not None:
             for el in list_profile_elements(self.conn, self._current_profile_id):
                 name = (el.get("column_name") or "").strip()
                 if name:
                     existing_columns.append(name)
-        opts = ask_element_options(self.root, selector, inspection, existing_columns, hierarchy)
+        opts = ask_element_options(self.root, selector, inspection, existing_columns, hierarchy, match_count)
         if not opts:
             return
         col, ext, arg = opts

@@ -135,17 +135,20 @@ def ask_element_options(
     inspection: Optional["ElementInspection"] = None,
     existing_columns: Optional[List[str]] = None,
     hierarchy: Optional["ElementHierarchy"] = None,
+    match_count: Optional[int] = None,
 ) -> Optional[Tuple[str, str, Optional[str]]]:
     """Return (column_name, extract_type, extract_arg) or None. extract_arg used when type is 'attribute'.
     inspection: optional ElementInspection from picker (Phase 4a); used for dropdowns and pre-fill.
     existing_columns: optional list of column names already in the profile (for suggestions and duplicate check).
-    hierarchy: optional ElementHierarchy from picker (Phase 5b); shown as path from root → clicked → children."""
+    hierarchy: optional ElementHierarchy from picker (Phase 5b); shown as path from root → clicked → children.
+    match_count: optional number of elements matching the selector on the current page (Phase 5c)."""
     from uscraper.engine.inspect import ElementHierarchy as EH, ElementInspection as EI
 
     result = [None]
     inspection = inspection if isinstance(inspection, EI) else None
     existing_columns = list(existing_columns or [])
     hierarchy = hierarchy if isinstance(hierarchy, EH) else None
+    match_count = int(match_count) if match_count is not None else None
 
     d = tk.Toplevel(parent)
     d.title("Element options")
@@ -209,6 +212,14 @@ def ask_element_options(
         d.clipboard_append(selector)
     ttk.Button(sel_frame, text="Copy", command=copy_sel, width=6).pack(side="left", padx=(8, 0))
     row += 1
+
+    # Phase 5c: clarify that scraping finds all matching elements
+    scrape_all_msg = "When you run a scrape, the tool will find all elements on the page that match this selector and extract the chosen field for each."
+    ttk.Label(d, text=scrape_all_msg, wraplength=450, foreground="gray").grid(row=row, column=0, columnspan=2, sticky="w", padx=5, pady=(0, 4))
+    row += 1
+    if match_count is not None:
+        ttk.Label(d, text=f"This selector matches {match_count} element(s) on the current page.", wraplength=450, font=("", 9, "bold")).grid(row=row, column=0, columnspan=2, sticky="w", padx=5, pady=(0, 8))
+        row += 1
 
     # Column name: combobox (dropdown + free text)
     col_suggestions, col_default = _column_suggestions(inspection, existing_columns)

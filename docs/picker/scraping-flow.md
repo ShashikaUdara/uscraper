@@ -358,7 +358,11 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Tasks**: Short copy in dialog (e.g. "When you run a scrape, the tool will find **all elements** that match this selector"); optional live match count; reminder in run flow; doc updates.
 
-**Status**: Pending.
+**Progress (Phase 5c — Implemented)**  
+- **Element-options dialog**: Added a short line (Phase 5c): "When you run a scrape, the tool will find all elements on the page that match this selector and extract the chosen field for each." Shown in gray below the Selector row. When the picker sends a **match count** (number of elements matching the selector on the current page), the dialog also shows "This selector matches N element(s) on the current page." in bold.  
+- **Live match count**: In the picker click handler (JS), after building the payload, `payload.matchCount = document.querySelectorAll(payload.selector || '').length` is set and sent. The GUI receives it as the 4th value from `get_next_selector()` and passes it into `ask_element_options(..., match_count)`.  
+- **Main window**: A reminder label next to **Run scrape**: "(Scraping extracts data for all elements matching each selector.)" in gray.  
+- **Docs**: In `docs/INSTALL.md`, added a sentence under "Using the Picker": "When you run a scrape, the tool finds **all elements** on the page that match each configured selector and extracts the chosen field … for each, producing one row per match in the CSV."
 
 ### Phase 5d: Scraping logic — all matching elements (verify and document)
 
@@ -380,7 +384,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 | **4d** | Polish | Long-value truncation, View full, keyboard, docs | **Done** |
 | **5a** | Hover highlight | Picker highlights element under cursor on hover | **Done** |
 | **5b** | Full element hierarchy | On click, show full DOM hierarchy in GUI | **Done** |
-| **5c** | UI clarity | "Scrape all matching" wording and optional match count | Pending |
+| **5c** | UI clarity | "Scrape all matching" wording and optional match count | **Done** |
 | **5d** | Scraping logic | Verify/fix all matches per selector; document | Pending |
 
 ---

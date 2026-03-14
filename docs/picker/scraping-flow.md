@@ -72,7 +72,7 @@ Our application uses **Playwright** to drive a real browser (Chromium, Firefox, 
    - Builds the output path: `{output_dir}/scrape_{profile_name}_{timestamp}.csv` (output_dir from app config).
    - Inserts a **run** row with status `running` and the CSV path.
    - Launches the browser (headless by default from options), opens a single page, and calls **page.goto(profile["url"], wait_until="domcontentloaded", timeout=...)**.
-   - For each scrape element, **page.locator(selector)** is used; for each match we extract text, an attribute, or HTML according to `extract_type` and `extract_arg`.
+   - For each scrape element, the engine finds **all** DOM nodes matching the selector (`page.locator(selector)`; then `locator.count()` and `locator.nth(i)` for each index) and extracts the requested field (text, attribute, or HTML) for each. One configured element thus yields one column with one value per matching node.
    - Columns are aligned by **maximum number of matches** across all selectors; shorter columns are padded with empty strings so the result is a rectangular table.
    - Writes the table to CSV (UTF-8, header = column names) and updates the run with status `completed` and row count. On any exception, the run is updated with status `failed` and the error message.
 
@@ -370,7 +370,10 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Tasks**: Verify `run_scrape` uses all matches (`locator.count()`, `locator.nth(i)`); document in scraping-flow.md; add code comment.
 
-**Status**: Pending.
+**Progress (Phase 5d — Implemented)**  
+- **Verification**: In `src/uscraper/engine/runner.py`, `_extract_column_values` already uses `locator = page.locator(selector)`, `count = locator.count()`, and `for i in range(count): el = locator.nth(i)` to extract text/attribute/html for **every** matching element. No code change was required.  
+- **Code comment**: Added a note in the docstring of `_extract_column_values`: "We use locator.count() and locator.nth(i) to get every match for this selector (scrape all matching elements, not just the first). Phase 5d."  
+- **Documentation**: In **Section 2.3 (Running a scrape)**, the bullet describing extraction now states explicitly that the engine finds **all** DOM nodes matching each selector and extracts the requested field for each, yielding one value per matching node; alignment and padding behaviour is unchanged.
 
 ---
 
@@ -385,7 +388,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 | **5a** | Hover highlight | Picker highlights element under cursor on hover | **Done** |
 | **5b** | Full element hierarchy | On click, show full DOM hierarchy in GUI | **Done** |
 | **5c** | UI clarity | "Scrape all matching" wording and optional match count | **Done** |
-| **5d** | Scraping logic | Verify/fix all matches per selector; document | Pending |
+| **5d** | Scraping logic | Verify/fix all matches per selector; document | **Done** |
 
 ---
 

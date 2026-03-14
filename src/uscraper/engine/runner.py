@@ -55,6 +55,8 @@ def _profile_options(profile: Dict[str, Any]) -> Dict[str, Any]:
 def _extract_column_values(page, selector: str, extract_type: str, extract_arg: Optional[str]) -> List[str]:
     """
     Extract all matching elements from page into a list of strings.
+    We use locator.count() and locator.nth(i) to get every match for this selector
+    (scrape all matching elements, not just the first). Phase 5d.
     extract_type: 'text' | 'attribute' | 'html'
     """
     locator = page.locator(selector)

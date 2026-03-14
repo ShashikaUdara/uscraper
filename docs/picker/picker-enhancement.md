@@ -311,6 +311,109 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 ---
 
+## 5.1 Implementation Plan — Picker Usability and Scrape-All-Matching (Section 4)
+
+The following phases implement the desired flow from **Section 4**: hover highlight, full element hierarchy on click, clear “scrape all matching” messaging, and verification of scraping logic. They build on the existing picker (Phases 4a–4d).
+
+---
+
+### Phase 5a: Hover highlight in the picker
+
+**Objective**: When the user hovers over the picker browser window, the element under the cursor is visually highlighted so the user sees exactly which area they are about to select before clicking.
+
+**Tasks**:
+
+1. **Inject hover script in the picker**
+   - On picker load (after existing init scripts), inject JavaScript that listens for `mouseover` / `mousemove` on `document` (or a suitable container).
+   - Resolve the element under the cursor (e.g. `document.elementFromPoint(x, y)` or the event target).
+   - Apply a **highlight style** to that element: e.g. outline (e.g. `outline: 2px solid blue`), semi-transparent background, or a dedicated overlay div. Ensure the highlight is clearly visible and does not shift layout (prefer outline or box-shadow).
+   - On `mouseout` or when the cursor moves to another element, remove the highlight from the previous element and apply it to the new one. Use a single “current highlighted” reference to avoid leaving stale highlights.
+
+2. **Performance and edge cases**
+   - Throttle or debounce `mousemove` if needed so highlight updates are smooth but not janky.
+   - Avoid highlighting the injected overlay/UI if any; restrict to the page’s own DOM.
+   - Ensure highlight is removed when the picker closes or the page navigates.
+
+3. **Optional: highlight the “repeating container”**
+   - Later enhancement: when hovering, optionally show a secondary hint (e.g. dimmed outline) for a suggested “repeating block” (e.g. parent with many similar siblings). Can be Phase 5b or a later iteration.
+
+**Deliverables**: Picker page shows a clear, stable highlight on the element under the cursor; no stray highlights on close/navigate.
+
+**Estimated effort**: Small–medium (1–2 days).
+
+---
+
+### Phase 5b: Full element hierarchy on click
+
+**Objective**: When the user clicks an element in the picker, extract the clicked block and show its **full element hierarchy** in the picker UI (path from root to target, all HTML elements, attributes, class names, ids, and other details) so the user can understand the structure and choose the right context for “scrape all matching.”
+
+**Tasks**:
+
+1. **Hierarchy payload (browser)**
+   - Extend the inspection script (or add a new one) that, given the clicked element, returns a **hierarchy** structure, e.g.:
+     - **Path from root**: list of nodes from `document.documentElement` (or `body`) down to the clicked element. For each node: `tagName`, `id`, `classList` or `className`, `attributes` (name → value), optional short `textPreview` or `innerText` snippet.
+     - **Clicked node**: full details (tag, id, classes, all attributes, inner text preview, outer HTML snippet).
+     - **Optional**: first level of children of the clicked element (tag + key attributes) so the user sees what’s inside the block.
+   - Serialize to a JSON-friendly structure (no circular refs); cap text/HTML length per node to keep payload size reasonable.
+
+2. **GUI: hierarchy view**
+   - After a click, show the hierarchy in the picker UI (main window or a dedicated panel/dialog). Display as an **expandable tree** or **indented list**: each level shows tag name, id, class(es), and key attributes. User can expand/collapse to see the path from root to the clicked element and optionally its children.
+   - Use the existing **selector** (and inspection) to drive the “configure element” flow: e.g. “Add this element” or “Use this level” so the user can add the current node (or a chosen ancestor) as a scrape element. The existing element-options dialog can still be used for column name, extract type, and attribute.
+
+3. **Integration with existing flow**
+   - Keep current behaviour: click → selector + inspection → element-options dialog. Add the hierarchy view as an **additional** panel or step (e.g. show hierarchy first, then “Configure” opens the element-options dialog with the same selector/inspection). Alternatively: show hierarchy and element-options in one screen (hierarchy on one side, form on the other).
+
+**Deliverables**: Click in picker produces a full hierarchy (path + clicked node + optional children); GUI shows this in a tree or indented list; user can proceed to configure the element and add it to the profile.
+
+**Estimated effort**: Medium (2–3 days).
+
+---
+
+### Phase 5c: UI clarity — “Scrape all matching elements”
+
+**Objective**: Make it explicit in the UI that the chosen selector will be used to find **all similar elements** on the page when scraping (select one representative → scrape all matching), so users understand the tool’s behaviour.
+
+**Tasks**:
+
+1. **In the element-options dialog (or hierarchy view)**
+   - Add a short, visible line of copy, e.g.: “When you run a scrape, the tool will find **all elements** on the page that match this selector and extract the chosen field for each.”
+   - Optionally show a **live count** in the picker: after the user has chosen a selector, run `document.querySelectorAll(selector).length` in the page and display “This selector matches **N** elements on the current page.” (Update when they change selector or when they add another element.)
+
+2. **In the main window and run flow**
+   - In the “Run scrape” area or status text, optionally remind: “Scraping will extract data for **all** elements matching each configured selector.”
+   - In `docs/INSTALL.md` and `docs/picker/scraping-flow.md`, state clearly that one configured element (e.g. “link”) results in one column in the CSV with **one value per matching element** (rows aligned by max count across columns).
+
+3. **Optional: preview in picker**
+   - When the user has added one or more elements, show a small “Preview” that lists selectors and, for each, the current match count on the page. Helps users spot typos or overly narrow/wide selectors.
+
+**Deliverables**: Clear in-app and doc wording that scraping uses “all matching elements”; optional match count and short reminder in run flow.
+
+**Estimated effort**: Small (0.5–1 day).
+
+---
+
+### Phase 5d: Scraping logic — all matching elements (verify and document)
+
+**Objective**: Ensure the scraping engine **already** extracts data for **all** elements matching each selector (not just the first), and document this behaviour; fix or extend if needed.
+
+**Tasks**:
+
+1. **Verify current behaviour**
+   - In `run_scrape`, for each scrape element the engine uses `page.locator(selector)` and iterates over **all** matches (e.g. `locator.count()` and `locator.nth(i)` for text/attribute/html). Confirm that this yields one value per matching element and that rows are built by aligning columns (max length, pad with ""). No change if behaviour is correct.
+
+2. **Fix if needed**
+   - If any code path only takes the first match (e.g. `locator.first` only), change it to iterate all matches so that “scrape all matching” is guaranteed for every column.
+
+3. **Document**
+   - In `docs/picker/scraping-flow.md` (and this document), state explicitly: “For each configured element, the engine finds **all** DOM nodes matching the selector and extracts the requested field (text, attribute, or html). The CSV has one row per index; if column A has 10 matches and column B has 8, the last 2 rows for column B are padded with empty string.”
+   - Add a one-line comment in the runner (e.g. above `_extract_column_values` or `_extract_all_elements`) that says we extract **all** matches for each selector.
+
+**Deliverables**: Confirmation (or fix) that scraping uses all matches per selector; short doc and code comment describing “scrape all matching.”
+
+**Estimated effort**: Small (0.5 day).
+
+---
+
 ## 6. Summary Table
 
 | Phase | Focus | Key deliverable | Status |
@@ -319,6 +422,10 @@ The work is split into **phases** so that each deliverable is testable and can b
 | **4b** | Dialog enhancements | Column combobox with suggestions; attribute dropdown with values; element preview | **Done** |
 | **4c** | Wiring and profile columns | Picker → dialog with inspection; existing columns in suggestions; duplicate handling | **Done** |
 | **4d** | Polish | Long-value truncation, duplicate warning, keyboard, docs | **Done** |
+| **5a** | Hover highlight | Picker highlights element under cursor on hover (outline/overlay) | Pending |
+| **5b** | Full element hierarchy | On click, extract and show full DOM hierarchy (path + node + optional children) in GUI | Pending |
+| **5c** | UI clarity | In-app and docs: “scrape all matching elements” and optional match count | Pending |
+| **5d** | Scraping logic | Verify/fix “all matches” per selector; document and comment in code | Pending |
 
 ---
 
@@ -330,11 +437,11 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 ---
 
-## 8. Future Enhancements (Out of Scope for This Plan)
+## 8. Future Enhancements (Out of Scope for Current Phases)
 
 - “Pick again” from the dialog to re-open the picker without closing the dialog.
 - Multiple element selection in one go (e.g. “Add all links in this list”).
 - XPath in addition to CSS selector.
-- Visual highlight of the selected element in the page while the dialog is open.
+- **Suggested repeating container**: when hovering (Phase 5a), optionally infer and highlight a parent that looks like a repeating block (e.g. list item wrapper) to help users pick the right scope for "scrape all matching."
 
-These can be added in later phases once the above is in place.
+Note: **Hover highlight** and **full element hierarchy** are now in the implementation plan as Phase 5a and Phase 5b.

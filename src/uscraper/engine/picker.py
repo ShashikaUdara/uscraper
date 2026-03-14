@@ -22,6 +22,59 @@ _PICKER_CLOSED = object()
 PICKER_CLOSED = object()
 
 
+def get_picker_hover_highlight_js() -> str:
+    """
+    Return JavaScript that highlights the element under the cursor in the picker (Phase 5a).
+    Listens to mousemove, uses elementFromPoint, applies a CSS class for outline highlight.
+    Throttles via requestAnimationFrame; removes highlight on mouseout from window.
+    """
+    return r"""
+(function() {
+  if (window.__pickerHoverInjected) return;
+  window.__pickerHoverInjected = true;
+  var style = document.createElement('style');
+  style.textContent = '.uscraper-picker-highlight { outline: 2px solid #2196F3 !important; outline-offset: 2px !important; }';
+  document.head.appendChild(style);
+  var lastHighlighted = null;
+  var rafScheduled = false;
+  var lastX = 0, lastY = 0;
+  function updateHighlight() {
+    rafScheduled = false;
+    var el = document.elementFromPoint(lastX, lastY);
+    if (el === lastHighlighted) return;
+    if (lastHighlighted) {
+      try { lastHighlighted.classList.remove('uscraper-picker-highlight'); } catch (e) {}
+      lastHighlighted = null;
+    }
+    if (el && el.nodeType === 1 && el !== document.documentElement && el !== document.body) {
+      try {
+        el.classList.add('uscraper-picker-highlight');
+        lastHighlighted = el;
+      } catch (e) {}
+    }
+  }
+  function onMove(e) {
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (!rafScheduled) {
+      rafScheduled = true;
+      requestAnimationFrame(updateHighlight);
+    }
+  }
+  function onOut(e) {
+    if (!e.relatedTarget || !document.body.contains(e.relatedTarget)) {
+      if (lastHighlighted) {
+        try { lastHighlighted.classList.remove('uscraper-picker-highlight'); } catch (e) {}
+        lastHighlighted = null;
+      }
+    }
+  }
+  document.addEventListener('mousemove', onMove, true);
+  document.addEventListener('mouseout', onOut, true);
+})();
+""".strip()
+
+
 class ElementPickerSession:
     """
     Picker session: browser at URL with injected click listener.
@@ -93,6 +146,8 @@ class ElementPickerSession:
         })();
         """
         self._page.evaluate(inject_click_js)
+        # Phase 5a: hover highlight so user sees which element they are about to select
+        self._page.evaluate(get_picker_hover_highlight_js())
         return self
 
     def __exit__(self, *args) -> None:

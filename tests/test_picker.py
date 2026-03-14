@@ -12,6 +12,7 @@ from uscraper.engine import (
     reorder_profile_elements,
     get_selector_for_element_js,
 )
+from uscraper.engine.picker import get_picker_hover_highlight_js
 from uscraper.db import ensure_db, create_profile, get_elements_for_profile
 
 
@@ -29,6 +30,18 @@ def test_get_selector_js_returns_non_empty():
     assert isinstance(js, str)
     assert "__getSelector" in js
     assert len(js) > 100
+
+
+def test_hover_highlight_js_returns_expected_content():
+    """Phase 5a: hover highlight script contains class and elementFromPoint."""
+    js = get_picker_hover_highlight_js()
+    assert isinstance(js, str)
+    assert "uscraper-picker-highlight" in js
+    assert "elementFromPoint" in js
+    assert "__pickerHoverInjected" in js
+    assert "mousemove" in js
+    assert "mouseout" in js
+    assert len(js) > 200
 
 
 def test_list_profile_elements(temp_db):

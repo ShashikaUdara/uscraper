@@ -316,7 +316,11 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Objective**: Long-value truncation, View full button, keyboard (Enter/Escape), focus, docs.
 
-**Progress (Phase 4d — Implemented)**: View full for attribute value; Enter/Escape and focus; Using the Picker in INSTALL.md.
+**Progress (Phase 4d — Implemented)**  
+- **Long attribute values**: Attribute dropdown already truncates values to 40 chars (`ATTR_DISPLAY_VALUE_LEN` in `gui/dialogs.py`). A **View full** button next to the attribute dropdown shows the full value of the currently selected attribute in a messagebox (capped at 2000 chars for very long values).  
+- **Duplicate column name warning**: Implemented in Phase 4c (dialog asks "Use it anyway?"; main window catches `IntegrityError`); no change in 4d.  
+- **Keyboard and focus**: In the element-options dialog, **Enter** confirms (bound to OK) and **Escape** cancels. Initial focus is set to the column-name combobox via `d.after(10, col_combo.focus_set)` so the user can type or pick immediately.  
+- **Documentation**: A **Using the Picker** section in `docs/INSTALL.md` describes: profile/URL/browser, opening the picker, clicking an element, the dialog (element preview, selector with Copy, column name suggestions, Extract type, attribute dropdown with View full), OK/Cancel, and that Enter confirms and Escape cancels.
 
 ### Phase 5a: Hover highlight in the picker
 
@@ -324,7 +328,14 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Tasks**: Inject hover script (mouseover/mousemove), resolve element under cursor, apply highlight style, remove on mouseout; throttle if needed; remove highlight on picker close/navigate.
 
-**Deliverables**: Clear, stable highlight on hover; no stray highlights. **Status**: Pending.
+**Deliverables**: Clear, stable highlight on hover; no stray highlights.
+
+**Progress (Phase 5a — Implemented)**  
+- **Hover script**: `get_picker_hover_highlight_js()` in `src/uscraper/engine/picker.py` injects a script that adds a `<style>` for class `.uscraper-picker-highlight` (blue outline, 2px solid, 2px offset) and listens to `mousemove` (capture) and `mouseout`. Uses `document.elementFromPoint(clientX, clientY)` to resolve the element under the cursor; applies the class to that element and removes it from the previously highlighted one. Skips `document.documentElement` and `document.body` so the whole page is not highlighted.  
+- **Throttling**: Updates are throttled via `requestAnimationFrame`; last coordinates are stored so the RAF callback uses current position.  
+- **Cleanup**: On `mouseout`, if `relatedTarget` is null or not in `document.body`, the highlight is removed (mouse left the window). When the picker closes or the page navigates, the DOM is torn down so no explicit cleanup is needed.  
+- **Injection**: The hover script is evaluated after the click listener in `ElementPickerSession.__enter__`, so the picker window shows hover highlight as soon as it is ready.  
+- **Verify**: `pytest tests/test_picker.py` — including `test_hover_highlight_js_returns_expected_content`.
 
 ### Phase 5b: Full element hierarchy on click
 
@@ -360,7 +371,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 | **4b** | Dialog enhancements | Column combobox; attribute dropdown; element preview | **Done** |
 | **4c** | Wiring and profile columns | Inspection + existing columns; duplicate handling | **Done** |
 | **4d** | Polish | Long-value truncation, View full, keyboard, docs | **Done** |
-| **5a** | Hover highlight | Picker highlights element under cursor on hover | Pending |
+| **5a** | Hover highlight | Picker highlights element under cursor on hover | **Done** |
 | **5b** | Full element hierarchy | On click, show full DOM hierarchy in GUI | Pending |
 | **5c** | UI clarity | "Scrape all matching" wording and optional match count | Pending |
 | **5d** | Scraping logic | Verify/fix all matches per selector; document | Pending |

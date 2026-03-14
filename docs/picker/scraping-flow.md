@@ -292,7 +292,14 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 **Tasks**: Dialog API with `inspection=None`, `existing_columns=None`; column name combobox with suggestions; extract type (text/attribute/html); attribute dropdown with `attr_name → value`; element preview; selector with Copy.
 
-**Progress (Phase 4b — Implemented)**: Implemented in `gui/dialogs.py`; tests in `tests/test_dialogs.py`.
+**Progress (Phase 4b — Implemented)**  
+- **Dialog API**: `ask_element_options(parent, selector, inspection=None, existing_columns=None)` in `src/uscraper/gui/dialogs.py`. Backward compatible when `inspection` is None.  
+- **Column name**: Combobox (dropdown + free text). `_column_suggestions(inspection, existing_columns)` builds options: e.g. "link" for `<a href>`, "image_src"/"image_alt" for `<img>`, generic `tag_attr`; always "inner_text", "html"; plus existing profile column names. Default is first suggestion.  
+- **Extract type**: Combo text / attribute / html. `_suggest_extract_and_attr(inspection)` suggests "attribute" + "href" for `<a>`, "attribute" + "src" for `<img>`. Attribute row shown only when extract type is "attribute".  
+- **Attribute dropdown**: When extract type is "attribute" and inspection has attributes, readonly combobox with display `attr_name → truncated(value)` (40 chars); stored value is attr name. Pre-select href for `<a>`, src for `<img>`, else first. "View full" button shows full value in a messagebox. When no attributes, "No attributes" label + Entry for manual attr name.  
+- **Element preview**: When inspection is present, "Element preview" section with tag, id/class if present, and inner text preview (read-only).  
+- **Selector**: Full selector shown (truncated in label); "Copy" button copies selector to clipboard.  
+- **Verify**: `pytest tests/test_dialogs.py` — all tests pass (column suggestions, extract/attr suggestions, with/without inspection and existing columns).
 
 ### Phase 4c: Picker–Dialog Wiring and Profile Column List
 

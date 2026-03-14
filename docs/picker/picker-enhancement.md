@@ -86,7 +86,68 @@ These will be **fetched in the browser** (via a small script run on the page) wh
 
 ---
 
-## 4. Implementation Plan
+## 4. Picker Usability: Current Issues and Desired Flow
+
+This section describes the main usability problems with the current picker and the intended operation flow so that the tool behaves like a proper scraping picker: **hover-to-highlight**, **click-to-inspect full hierarchy**, **configure**, and **scrape all matching elements** (not just the one clicked).
+
+### 4.1 Current Picker Issues
+
+- **Not user-friendly; hard to understand**  
+  The biggest issue. The current flow (open browser, click element, get a selector and a small dialog) does not make it obvious what will be scraped or how the choice maps to “all similar items” on the page. Users struggle to understand which area they are targeting and what the tool will do with it.
+
+- **Only the selected element’s details are considered**  
+  The picker focuses on the single element the user clicked (its tag, attributes, text). The basic use of a scraping tool is to **scrape all information that matches the same context** — i.e. all similar elements on the page. For example, if the user selects one product card or one link in a list, the tool should be designed to **pick all product cards or all links of that kind**, not just the one clicked. The current design does not make this “select one, scrape all matching” model clear, and the UI does not emphasise that the chosen selector will be used to find **all** matching elements when scraping.
+
+- **No visual feedback before click**  
+  There is no hover highlight. The user cannot see which block or area the cursor is over until after they click, which makes precise selection difficult and increases mistakes.
+
+- **Limited hierarchy and context after click**  
+  After a click, the user sees a summary (tag, attributes, text preview) and a selector. They do not see the **full element hierarchy** (parent/child chain, surrounding structure, all HTML elements and their attributes/classes/ids) in a clear, explorable way. That makes it hard to understand the page structure and to choose the right “context” (e.g. the repeating container) for scraping all similar blocks.
+
+### 4.2 Desired Operation Flow
+
+The operation flow should be as follows.
+
+#### Step 1: Hover — Highlight the element under the cursor
+
+- When the user **hovers** over the picker browser window, the element currently under the mouse should be **visually highlighted** (e.g. outline, background tint, or overlay).
+- This highlight must **clearly show which area** the cursor is on, so the user can see exactly what they are about to select before clicking.
+- Implementation implies injecting a script that tracks `mouseover` / `mousemove`, resolves the element under the cursor, and applies a highlight style (and removes it when the cursor leaves or moves to another element).
+
+#### Step 2: Click — Extract the clicked block and show full element hierarchy
+
+- When the user **clicks** that area, the **clicked block** (the target element) should be “extracted” and presented in the picker UI.
+- The picker should show the **full element hierarchy** for that block, including:
+  - **All HTML elements** in the path (from root to the clicked element, and optionally children).
+  - **Attributes** for each node: class names, ids, data attributes, and other available attributes.
+  - Any other **available details** (tag name, role, text snippet) so the user can easily understand the structure.
+- This hierarchy view should be **easy to read and navigate** (e.g. tree or indented list), so the user can see the context (e.g. “this link is inside this div, inside this section”) and decide which level to use as the “repeating unit” for scraping.
+
+#### Step 3: Configure essential elements
+
+- Using the hierarchy and details, the user **configures the essential elements** they want to scrape (e.g. “for each card, get title, link, and price”).
+- The UI should make it clear that the **selector** (or chosen level) will be used to find **all similar areas** on the page when scraping — i.e. “all elements matching this context.”
+
+#### Step 4: Scrape — All matching areas
+
+- When the user proceeds to **scraping**, the system must **scrape all information for the given context** — i.e. **all similar areas** on the page.
+- For each configured element (e.g. “title”, “link”), the engine should use the selector to find **every matching element** on the page and extract the requested data (text, attribute, html), producing one row per repeated block (or one value per match, depending on the chosen data model).
+- This is the core expectation: **select one representative block in the picker → scrape all blocks that match that context.**
+
+### 4.3 Summary Table
+
+| Current problem | Desired behaviour |
+|-----------------|-------------------|
+| No feedback before click | Hover highlights the element under the cursor so the user sees the target area. |
+| Only clicked element’s details | Click opens a view showing the **full hierarchy** (elements, attributes, classes, ids) for the clicked block. |
+| Unclear what gets scraped | Make explicit that the chosen selector/context is used to find **all similar elements** on the page. |
+| Scrape = one element? | Scrape = **all** elements matching the configured context (all similar cards, all similar links, etc.). |
+
+Implementing hover highlight, full-hierarchy display, and clear “scrape all matching” behaviour will require changes to both the picker (browser injection, hierarchy extraction, UI) and the documentation so users understand the flow.
+
+---
+
+## 5. Implementation Plan
 
 The work is split into **phases** so that each deliverable is testable and can be merged incrementally.
 
@@ -250,7 +311,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 ---
 
-## 5. Summary Table
+## 6. Summary Table
 
 | Phase | Focus | Key deliverable | Status |
 |-------|--------|------------------|--------|
@@ -261,7 +322,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 ---
 
-## 6. Dependencies and Risks
+## 7. Dependencies and Risks
 
 - **Playwright**: Inspection runs inside `page.evaluate`; ensure the element reference or selector is still valid when we run the inspector (same tick or immediately after click).
 - **Tkinter**: Dropdown with “attribute → value” labels may need a custom combobox or listbox if ttk.Combobox does not support rich labels; a simple approach is to store `attr_name` and show `f"{name} → {value[:40]}..."` in the dropdown.
@@ -269,7 +330,7 @@ The work is split into **phases** so that each deliverable is testable and can b
 
 ---
 
-## 7. Future Enhancements (Out of Scope for This Plan)
+## 8. Future Enhancements (Out of Scope for This Plan)
 
 - “Pick again” from the dialog to re-open the picker without closing the dialog.
 - Multiple element selection in one go (e.g. “Add all links in this list”).
